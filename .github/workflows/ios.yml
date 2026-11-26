@@ -69,6 +69,7 @@ jobs:
           grep -q "TEST BUILD SUCCEEDED" build-for-testing.log || { grep -E "error:" build-for-testing.log | head -80; exit 1; }
 
       - name: Unit tests
+        timeout-minutes: 20
         run: |
           set -o pipefail
           xcodebuild test-without-building \
@@ -82,6 +83,7 @@ jobs:
 
       - name: UI tests
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_ui_tests }}
+        timeout-minutes: 35
         run: |
           set -o pipefail
           xcodebuild test-without-building \
@@ -95,11 +97,14 @@ jobs:
 
       - name: Capture screenshots
         if: always()
+        timeout-minutes: 8
+        continue-on-error: true
         run: |
           bash scripts/capture_screenshots.sh "${{ steps.sim.outputs.udid }}" build/dd screenshots || true
           ls -la screenshots || true
 
       - name: Archive (unsigned) and package IPA
+        timeout-minutes: 25
         run: |
           set -o pipefail
           xcodebuild archive \
