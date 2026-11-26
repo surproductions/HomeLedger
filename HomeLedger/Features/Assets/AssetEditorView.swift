@@ -96,56 +96,7 @@ struct AssetEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                photosSection
-                Section("Basics") {
-                    TextField("Name (required)", text: $draft.name)
-                        .textInputAutocapitalization(.words)
-                        .accessibilityIdentifier("asset.name")
-                    Picker("Category", selection: $draft.category) {
-                        ForEach(AssetCategory.allCases) { Label($0.info.name, systemImage: $0.info.symbol).tag($0.rawValue) }
-                        ForEach(customCategories) { c in Label(c.name, systemImage: c.symbolName).tag(CategoryInfo.customPrefix + c.name) }
-                    }
-                    Button("New category…") { showNewCategory = true }
-                    if homes.count > 1 {
-                        Picker("Home", selection: $draft.homeID) {
-                            ForEach(homes) { Text($0.name).tag(Optional($0.id)) }
-                        }
-                    }
-                    Picker("Room", selection: $draft.roomID) {
-                        Text("Unassigned").tag(UUID?.none)
-                        ForEach(selectedHome?.sortedRooms ?? []) { Label($0.name, systemImage: $0.symbolName).tag(Optional($0.id)) }
-                    }
-                    .accessibilityIdentifier("asset.room")
-                    Stepper("Quantity: \(draft.quantity)", value: $draft.quantity, in: 1...999)
-                    Picker("Condition", selection: $draft.condition) { ForEach(AssetCondition.allCases) { Text($0.label).tag($0) } }
-                }
-                Section {
-                    TextField("Brand", text: $draft.brand)
-                    TextField("Model", text: $draft.modelNumber).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                    TextField("Serial number", text: $draft.serialNumber).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                        .accessibilityIdentifier("asset.serial")
-                    HStack {
-                        TextField("Barcode / QR", text: $draft.barcode).autocorrectionDisabled()
-                        if BarcodeScannerView.isAvailable {
-                            Button { showScanner = true } label: { Image(systemName: "barcode.viewfinder") }
-                                .accessibilityLabel("Scan barcode")
-                        }
-                    }
-                } header: { Text("Identification") } footer: {
-                    if !BarcodeScannerView.isAvailable { Text("Barcode scanning needs a camera-equipped iPhone XS or later. You can type the code instead.") }
-                }
-                Section("Purchase") {
-                    OptionalDatePicker(title: "Purchase date", date: $draft.purchaseDate)
-                    MoneyField(title: "Price", cents: $draft.purchasePriceCents)
-                    TextField("Retailer / vendor", text: $draft.retailer)
-                    MoneyField(title: "Est. replacement value", cents: $draft.replacementValueCents)
-                }
-                warrantySection
-                Section("Notes") {
-                    TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
-                }
-            }
+            form
             .navigationTitle(isNew ? "New item" : "Edit item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -161,6 +112,12 @@ struct AssetEditorView: View {
             .onChange(of: draft.homeID) { _, _ in
                 if !(selectedHome?.rooms ?? []).contains(where: { $0.id == draft.roomID }) { draft.roomID = nil }
             }
+        }
+        .modifier(EditorDialogs(view: self))
+    }
+
+    fileprivate func applyDialogs<V: View>(_ content: V) -> some View {
+        content
             .sheet(isPresented: $showCamera) { CameraPicker { addImage($0) }.ignoresSafeArea() }
             .sheet(isPresented: $showScanner) { BarcodeScannerSheet { draft.barcode = $0 } }
             .alert("New category", isPresented: $showNewCategory) {
@@ -175,12 +132,79 @@ struct AssetEditorView: View {
                 Button("Discard", role: .destructive) { cancel() }
             }
             .interactiveDismissDisabled(!newPhotoFiles.isEmpty || hasEdits)
-        }
     }
 
     private var hasEdits: Bool { loaded && (isNew ? !draft.name.isEmpty : false) }
 
     // MARK: Sections
+
+    private var form: some View {
+        Form {
+            photosSection
+            basicsSection
+            identificationSection
+            purchaseSection
+            warrantySection
+            notesSection
+        }
+    }
+
+    private var basicsSection: some View {
+        Section("Basics") {
+            TextField("Name (required)", text: $draft.name)
+                .textInputAutocapitalization(.words)
+                .accessibilityIdentifier("asset.name")
+            Picker("Category", selection: $draft.category) {
+                ForEach(AssetCategory.allCases) { Label($0.info.name, systemImage: $0.info.symbol).tag($0.rawValue) }
+                ForEach(customCategories) { c in Label(c.name, systemImage: c.symbolName).tag(CategoryInfo.customPrefix + c.name) }
+            }
+            Button("New category…") { showNewCategory = true }
+            if homes.count > 1 {
+                Picker("Home", selection: $draft.homeID) {
+                    ForEach(homes) { Text($0.name).tag(Optional($0.id)) }
+                }
+            }
+            Picker("Room", selection: $draft.roomID) {
+                Text("Unassigned").tag(UUID?.none)
+                ForEach(selectedHome?.sortedRooms ?? []) { Label($0.name, systemImage: $0.symbolName).tag(Optional($0.id)) }
+            }
+            .accessibilityIdentifier("asset.room")
+            Stepper("Quantity: \(draft.quantity)", value: $draft.quantity, in: 1...999)
+            Picker("Condition", selection: $draft.condition) { ForEach(AssetCondition.allCases) { Text($0.label).tag($0) } }
+        }
+    }
+
+    private var identificationSection: some View {
+        Section {
+            TextField("Brand", text: $draft.brand)
+            TextField("Model", text: $draft.modelNumber).textInputAutocapitalization(.characters).autocorrectionDisabled()
+            TextField("Serial number", text: $draft.serialNumber).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                .accessibilityIdentifier("asset.serial")
+            HStack {
+                TextField("Barcode / QR", text: $draft.barcode).autocorrectionDisabled()
+                if BarcodeScannerView.isAvailable {
+                    Button { showScanner = true } label: { Image(systemName: "barcode.viewfinder") }
+                        .accessibilityLabel("Scan barcode")
+                }
+            }
+        } header: { Text("Identification") } footer: {
+            if !BarcodeScannerView.isAvailable { Text("Barcode scanning needs a camera-equipped iPhone XS or later. You can type the code instead.") }
+        }
+    }
+
+    private var purchaseSection: some View {
+        Section("Purchase") {
+            OptionalDatePicker(title: "Purchase date", date: $draft.purchaseDate)
+            MoneyField(title: "Price", cents: $draft.purchasePriceCents)
+            TextField("Retailer / vendor", text: $draft.retailer)
+            MoneyField(title: "Est. replacement value", cents: $draft.replacementValueCents)
+        }
+    }
+
+    private var notesSection: some View {
+        Section("Notes") {
+            TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
+    }
 
     private var existingPhotos: [AssetPhoto] { (asset?.sortedPhotos ?? []).filter { !removedPhotos.contains($0.id) } }
 
@@ -382,4 +406,9 @@ struct AssetEditorView: View {
             errorMessage = "Your changes couldn't be saved: \(error.localizedDescription)"
         }
     }
+}
+
+private struct EditorDialogs: ViewModifier {
+    let view: AssetEditorView
+    func body(content: Content) -> some View { view.applyDialogs(content) }
 }

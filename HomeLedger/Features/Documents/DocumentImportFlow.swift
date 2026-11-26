@@ -38,10 +38,11 @@ struct DocumentReviewDraft {
         serialNumber = r.serialNumber?.value ?? ""; serialConfidence = r.serialNumber?.confidence
         if let explicit = r.warrantyExpiration {
             warrantyEnd = explicit.value; warrantyEndConfidence = explicit.confidence
-        } else if let months = r.warrantyMonths, let start = r.purchaseDate?.value {
+        } else if let months = r.warrantyMonths?.value, let start = r.purchaseDate?.value {
             warrantyEnd = WarrantyMath.expiration(start: start, months: months, calendar: calendar)
             warrantyEndConfidence = .inferred
-            warrantyEndCalculatedFrom = "\(months % 12 == 0 ? "\(months / 12)-year" : "\(months)-month") coverage stated on the document"
+            let period: String = months % 12 == 0 ? "\(months / 12)-year" : "\(months)-month"
+            warrantyEndCalculatedFrom = period + " coverage stated on the document"
         }
         let base = [vendor, kind.label].filter { !$0.isEmpty }.joined(separator: " ")
         title = productName.isEmpty ? (base.isEmpty ? fallbackTitle : base) : "\(productName) \(kind.label.lowercased())"
