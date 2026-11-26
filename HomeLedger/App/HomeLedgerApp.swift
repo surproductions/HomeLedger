@@ -22,6 +22,7 @@ struct HomeLedgerApp: App {
 /// Opens the database. If it can't be opened, shows a recovery screen instead of discarding data.
 struct AppBootstrapView: View {
     @Environment(AppModel.self) private var app
+    @AppStorage(Preferences.appearanceKey) private var appearance: String = AppearanceMode.system.rawValue
     @State private var container: ModelContainer?
     @State private var loadError: Error?
     @State private var recoveryMessage: String?
@@ -38,6 +39,7 @@ struct AppBootstrapView: View {
             }
         }
         .task { if container == nil && loadError == nil { load() } }
+        .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
     }
 
     private func load() {

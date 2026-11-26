@@ -116,9 +116,9 @@ jobs:
           grep -q "ARCHIVE SUCCEEDED" archive.log
           mkdir -p dist/Payload
           cp -R build/HomeLedger.xcarchive/Products/Applications/HomeLedger.app dist/Payload/
-          (cd dist && zip -qry HomeLedger-1.0.0-unsigned.ipa Payload && rm -rf Payload)
-          (cd build && zip -qry ../dist/HomeLedger-1.0.0.xcarchive.zip HomeLedger.xcarchive)
-          unzip -l dist/HomeLedger-1.0.0-unsigned.ipa | tail -3
+          (cd dist && zip -qry HomeLedger-1.0.1-unsigned.ipa Payload && rm -rf Payload)
+          (cd build && zip -qry ../dist/HomeLedger-1.0.1.xcarchive.zip HomeLedger.xcarchive)
+          unzip -l dist/HomeLedger-1.0.1-unsigned.ipa | tail -3
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" build/HomeLedger.xcarchive/Products/Applications/HomeLedger.app/Info.plist
           shasum -a 256 dist/* | tee dist/SHA256SUMS.txt
 
@@ -178,11 +178,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v1.0.0-build.${{ github.run_number }}"
+          TAG="v1.0.1-build.${{ github.run_number }}"
           (cd screenshots 2>/dev/null && zip -qr ../dist/HomeLedger-screenshots.zip .) || true
           FILES=(dist/*.ipa dist/*.xcarchive.zip dist/SHA256SUMS.txt HomeLedger-xcodeproj.zip)
           [ -f dist/HomeLedger-screenshots.zip ] && FILES+=(dist/HomeLedger-screenshots.zip)
           gh release create "$TAG" "${FILES[@]}" \
             --target "$GITHUB_SHA" --prerelease \
-            --title "HomeLedger 1.0.0 (build ${{ github.run_number }})" \
+            --title "HomeLedger 1.0.1 (build ${{ github.run_number }})" \
             --notes-file docs/RELEASE_NOTES.md

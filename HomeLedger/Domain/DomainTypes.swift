@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum HomeType: String, CaseIterable, Identifiable, Codable {
     case house, apartment, condo, townhouse, cabin, rental, other
@@ -232,6 +233,38 @@ enum Money {
     static func sum(_ cents: [Int]) -> Int { cents.reduce(0, +) }
 }
 
+// MARK: - Appearance
+
+/// App-wide colour scheme choice. `.system` follows the iPhone's Light/Dark setting.
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .system: "circle.lefthalf.filled"
+        case .light: "sun.max"
+        case .dark: "moon"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 // MARK: - Preferences
 
 enum Preferences {
@@ -243,6 +276,7 @@ enum Preferences {
     static let notificationsEnabledKey = "pref.notificationsEnabled"
     static let selectedHomeIDKey = "pref.selectedHomeID"
     static let dateStyleKey = "pref.dateStyle"
+    static let appearanceKey = "pref.appearance"
 
     static var defaults: UserDefaults = .standard
 

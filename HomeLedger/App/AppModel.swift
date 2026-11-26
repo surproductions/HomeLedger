@@ -123,6 +123,9 @@ final class AppModel {
     var documentsPath: [AppRoute] = []
     var sheet: AppSheet?
     var toast: String?
+    /// Floating tab bar visibility (hidden while scrolling down, like YouTube).
+    private(set) var tabBarVisible = true
+    @ObservationIgnored private var scrollTravel: CGFloat = 0
     var selectedHomeID: UUID? {
         didSet { UserDefaults.standard.set(selectedHomeID?.uuidString, forKey: Preferences.selectedHomeIDKey) }
     }
@@ -181,6 +184,23 @@ final class AppModel {
         if isPremium { return true }
         present(.paywall(feature))
         return false
+    }
+
+    func setTabBarVisible(_ visible: Bool) {
+        scrollTravel = 0
+        guard tabBarVisible != visible else { return }
+        let animation: Animation? = UIAccessibility.isReduceMotionEnabled ? nil : .spring(response: 0.35, dampingFraction: 0.86)
+        withAnimation(animation) { tabBarVisible = visible }
+    }
+
+    /// Accumulates scroll movement in one direction; hides after ~40 pt down, shows after ~30 pt up
+    /// or when back near the top. VoiceOver users always keep the bar.
+    func handleScroll(offset: CGFloat, delta: CGFloat) {
+        guard !UIAccessibility.isVoiceOverRunning, delta != 0 else { return }
+        if offset <= 12 { setTabBarVisible(true); return }
+        if (delta > 0) != (scrollTravel > 0) { scrollTravel = 0 }
+        scrollTravel += delta
+        if scrollTravel > 40 { setTabBarVisible(false) } else if scrollTravel < -30 { setTabBarVisible(true) }
     }
 
     func syncReminders(_ context: ModelContext) {

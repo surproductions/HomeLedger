@@ -56,21 +56,23 @@ struct MainTabView: View {
         @Bindable var app = app
         TabView(selection: $app.selectedTab) {
             NavigationStack(path: $app.homePath) { DashboardView().withAppDestinations() }
-                .tag(AppTab.home)
-                .toolbar(.hidden, for: .tabBar)
+                .tabContent(.home)
             NavigationStack(path: $app.myHomePath) { MyHomeView().withAppDestinations() }
-                .tag(AppTab.myHome)
-                .toolbar(.hidden, for: .tabBar)
+                .tabContent(.myHome)
             NavigationStack(path: $app.maintenancePath) { MaintenanceView().withAppDestinations() }
-                .tag(AppTab.maintenance)
-                .toolbar(.hidden, for: .tabBar)
+                .tabContent(.maintenance)
             NavigationStack(path: $app.documentsPath) { DocumentsView().withAppDestinations() }
-                .tag(AppTab.documents)
-                .toolbar(.hidden, for: .tabBar)
+                .tabContent(.documents)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingTabBar(selection: $app.selectedTab) { app.present(.addMenu) }
+        .scrollIndicators(.hidden)
+        .overlay(alignment: .bottom) {
+            FloatingTabBar(selection: $app.selectedTab, isVisible: app.tabBarVisible) { app.present(.addMenu) }
         }
+        .onChange(of: app.selectedTab) { _, _ in app.setTabBarVisible(true) }
+        .onChange(of: app.homePath) { _, _ in app.setTabBarVisible(true) }
+        .onChange(of: app.myHomePath) { _, _ in app.setTabBarVisible(true) }
+        .onChange(of: app.maintenancePath) { _, _ in app.setTabBarVisible(true) }
+        .onChange(of: app.documentsPath) { _, _ in app.setTabBarVisible(true) }
         .overlay(alignment: .top) { ToastView(message: app.toast) }
         .sheet(item: $app.sheet) { sheet in
             SheetHost(sheet: sheet)
@@ -79,11 +81,45 @@ struct MainTabView: View {
     }
 }
 
+extension View {
+    /// Per-tab setup: hides the system tab bar, reserves room under the last content so it never
+    /// sits behind the floating bar, and lets scrolling hide/show the bar.
+    func tabContent(_ tab: AppTab) -> some View {
+        self
+            .tag(tab)
+            .toolbar(.hidden, for: .tabBar)
+            .contentMargins(.bottom, FloatingTabBar.reservedHeight, for: .scrollContent)
+            .modifier(HidesTabBarOnScroll())
+    }
+}
+
+/// YouTube-style behaviour: scrolling down hides the bar, scrolling up (or reaching the top) shows it.
+struct HidesTabBarOnScroll: ViewModifier {
+    @Environment(AppModel.self) private var app
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { old, new in
+                app.handleScroll(offset: new, delta: new - old)
+            }
+        } else {
+            content
+        }
+    }
+}
+
 struct FloatingTabBar: View {
+    /// Bottom space every tab screen keeps free so its last content clears the bar.
+    static let reservedHeight: CGFloat = 96
+
     @Binding var selection: AppTab
+    var isVisible: Bool = true
     let onAdd: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
+    @Namespace private var highlight
 
     var body: some View {
         HStack(spacing: 0) {
@@ -115,16 +151,22 @@ struct FloatingTabBar: View {
         .padding(.horizontal, 14)
         .padding(.bottom, 6)
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .offset(y: isVisible ? 0 : 160)
+        .opacity(isVisible ? 1 : 0)
+        .allowsHitTesting(isVisible)
+        .accessibilityHidden(!isVisible)
     }
 
     private func tabButton(_ tab: AppTab) -> some View {
         let selected = selection == tab
         return Button {
-            withAnimation(MotionSafe.animation(reduceMotion)) { selection = tab }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78)) { selection = tab }
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: selected ? "\(tab.symbol).fill" : tab.symbol)
                     .font(.system(size: 17, weight: selected ? .semibold : .regular))
+                    .contentTransition(.symbolEffect(.replace))
+                    .scaleEffect(selected && !reduceMotion ? 1.08 : 1)
                     .frame(height: 22)
                 Text(tab.title)
                     .font(.system(size: 10.5, weight: selected ? .semibold : .medium))
@@ -133,7 +175,13 @@ struct FloatingTabBar: View {
             }
             .foregroundStyle(selected ? Theme.brand : Theme.inkTertiary)
             .frame(maxWidth: .infinity, minHeight: 48)
-            .background(selected ? Theme.brandSoft : .clear, in: Capsule())
+            .background {
+                // One highlight that glides between tabs (matched geometry) instead of fading in place.
+                if selected {
+                    Capsule().fill(Theme.brandSoft)
+                        .matchedGeometryEffect(id: "tabHighlight", in: highlight)
+                }
+            }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

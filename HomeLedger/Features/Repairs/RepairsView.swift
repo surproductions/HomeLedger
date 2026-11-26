@@ -28,6 +28,7 @@ struct RepairsView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
+                .contentMargins(.bottom, 0, for: .scrollContent)
                 if !records.isEmpty {
                     Text("\(records.count) record\(records.count == 1 ? "" : "s") · \(Money.format(cents: total)) total")
                         .font(.subheadline).foregroundStyle(Theme.inkSecondary).padding(.horizontal, 4)

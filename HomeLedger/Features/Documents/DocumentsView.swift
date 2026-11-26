@@ -35,6 +35,7 @@ struct DocumentsView: View {
                     .padding(.horizontal, 2)
                 }
                 .scrollIndicators(.hidden)
+                .contentMargins(.bottom, 0, for: .scrollContent)
                 .accessibilityIdentifier("documents.filters")
 
                 if documents.isEmpty {

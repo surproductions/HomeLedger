@@ -50,6 +50,56 @@ final class HomeLedgerUITests: XCTestCase {
         }
     }
 
+    private func waitUntil(timeout: TimeInterval = 5, _ condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if condition() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        } while Date() < deadline
+        return false
+    }
+
+    private func tabBarShown() -> Bool {
+        let add = app.buttons["tab.add"]
+        return add.exists && add.isHittable
+    }
+
+    // Floating tab bar hides when scrolling down and returns when scrolling up (root and pushed screens).
+    func testTabBarHidesOnScrollAndReturns() {
+        launch(sample: true)
+        XCTAssertTrue(app.buttons["tab.add"].waitForExistence(timeout: 20))
+        XCTAssertTrue(tabBarShown())
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertTrue(waitUntil { !self.tabBarShown() }, "bar hides while scrolling down")
+        app.swipeDown()
+        XCTAssertTrue(waitUntil { self.tabBarShown() }, "bar returns when scrolling up")
+
+        waitAndTap(app.buttons["tab.myHome"])
+        waitAndTap(app.buttons["shortcut.items"])
+        let first = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Cordless Drill'")).firstMatch
+        waitAndTap(first)
+        XCTAssertTrue(waitUntil { self.tabBarShown() }, "opening a screen shows the bar")
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertTrue(waitUntil { !self.tabBarShown() }, "hides on pushed screens too")
+        app.swipeDown()
+        XCTAssertTrue(waitUntil { self.tabBarShown() })
+    }
+
+    // Appearance can be set to System, Light or Dark.
+    func testAppearanceSetting() {
+        launch(sample: true)
+        waitAndTap(app.buttons["dashboard.settings"], timeout: 20)
+        let picker = app.segmentedControls["settings.appearance"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue(picker.buttons["System"].isSelected, "defaults to System")
+        picker.buttons["Dark"].tap()
+        XCTAssertTrue(waitUntil { picker.buttons["Dark"].isSelected })
+        picker.buttons["Light"].tap()
+        XCTAssertTrue(waitUntil { picker.buttons["Light"].isSelected })
+    }
+
     // 1. First launch and home creation
     func testFirstLaunchAndHomeCreation() {
         launch(sample: false)

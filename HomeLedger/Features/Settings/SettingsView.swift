@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage(Preferences.notificationsEnabledKey) private var notificationsEnabled = true
     @AppStorage(Preferences.reminderHourKey) private var reminderHour = 9
     @AppStorage(Preferences.onboardingCompleteKey) private var onboardingComplete = true
+    @AppStorage(Preferences.appearanceKey) private var appearance: String = AppearanceMode.system.rawValue
 
     @State private var confirmRemoveSample = false
     @State private var confirmDeleteAll = false
@@ -34,6 +35,18 @@ struct SettingsView: View {
                     TextField("Your name (optional)", text: $displayName)
                         .textContentType(.givenName)
                     NavigationLink { HomesManagerView() } label: { Label("Homes & rooms", systemImage: "house.and.flag") }
+                }
+
+                Section {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Text(mode.label).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("settings.appearance")
+                } header: { Text("Appearance") } footer: {
+                    Text("System follows your iPhone's Light or Dark setting.")
                 }
 
                 Section {
