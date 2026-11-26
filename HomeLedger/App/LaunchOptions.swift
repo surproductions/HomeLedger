@@ -25,7 +25,7 @@ struct LaunchOptions {
         guard isUITesting else { return }
         if resetData { PersistenceController.resetForTesting() }
         UIView.setAnimationsEnabled(false)
-        // Avoid system permission alerts interrupting automated tests.
-        UserDefaults.standard.set(false, forKey: Preferences.notificationsEnabledKey)
+        // Permission prompts are skipped in UI-testing mode wherever they'd be requested,
+        // so reminder preferences keep their real defaults.
     }
 }

@@ -126,7 +126,7 @@ struct FloatingTabBar: View {
                 Image(systemName: selected ? "\(tab.symbol).fill" : tab.symbol)
                     .font(.system(size: 17, weight: selected ? .semibold : .regular))
                     .frame(height: 22)
-                Text(tab == .maintenance ? "Upkeep" : tab.title)
+                Text(tab.title)
                     .font(.system(size: 10.5, weight: selected ? .semibold : .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

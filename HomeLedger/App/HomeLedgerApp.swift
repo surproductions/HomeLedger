@@ -73,9 +73,10 @@ struct LaunchView: View {
         ZStack {
             Theme.heroGradient.ignoresSafeArea()
             VStack(spacing: 14) {
-                Image(systemName: "house.lodge")
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(.white)
+                Image("LaunchMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
                 Text("HomeLedger").font(.title2.weight(.semibold)).foregroundStyle(.white)
             }
             .accessibilityElement(children: .combine)

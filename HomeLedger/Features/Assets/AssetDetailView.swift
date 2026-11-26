@@ -223,7 +223,7 @@ struct AssetDetailView: View {
                     StatusPill(text: asset.warrantyStatus.label, tone: asset.warrantyStatus.tone, symbol: asset.warrantyStatus.symbol)
                     Spacer()
                     if let days = asset.warrantyDaysRemaining, days >= 0 {
-                        Text("\(days) days left").font(.subheadline.weight(.semibold)).foregroundStyle(asset.warrantyStatus.tone.color)
+                        Text("\(DurationText.long(days: days)) left").font(.subheadline.weight(.semibold)).foregroundStyle(asset.warrantyStatus.tone.color)
                     }
                 }
                 .padding(.bottom, 6)

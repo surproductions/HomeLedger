@@ -13,6 +13,16 @@ final class WarrantyReminderTests: HomeLedgerTestCase {
         XCTAssertEqual(WarrantyStatus.daysRemaining(expiration: date(2025, 6, 11), now: now, calendar: calendar), 10)
     }
 
+    func testRemainingTimeLabelsStayReadable() {
+        XCTAssertEqual(DurationText.compact(days: 34), "34d")
+        XCTAssertEqual(DurationText.compact(days: 241), "8 mo")
+        XCTAssertEqual(DurationText.compact(days: 1276), "3 yr")
+        XCTAssertEqual(DurationText.long(days: 1), "1 day")
+        XCTAssertEqual(DurationText.long(days: 45), "45 days")
+        XCTAssertEqual(DurationText.long(days: 400), "13 months")
+        XCTAssertEqual(DurationText.long(days: 2130), "5 years")
+    }
+
     func testWarrantyMathFromPeriod() {
         let end = WarrantyMath.expiration(start: date(2025, 3, 15), months: 24, calendar: calendar)!
         XCTAssertEqual(calendar.dateComponents([.year, .month, .day], from: end), DateComponents(year: 2027, month: 3, day: 14))

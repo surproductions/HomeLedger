@@ -55,7 +55,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 14) {
-                Image(systemName: "house.lodge.fill").font(.system(size: 56, weight: .semibold)).foregroundStyle(.white)
+                Image("LaunchMark").resizable().scaledToFit().frame(width: 104, height: 104)
                     .accessibilityHidden(true)
                 Text("HomeLedger").font(.largeTitle.weight(.bold)).foregroundStyle(.white)
                 Text("Your entire home, organized.").font(.title3).foregroundStyle(.white.opacity(0.85))

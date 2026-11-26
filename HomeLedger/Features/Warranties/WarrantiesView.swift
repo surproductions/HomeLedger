@@ -91,7 +91,7 @@ struct WarrantyRow: View {
             }
             Spacer()
             if let days = asset.warrantyDaysRemaining, days >= 0 {
-                StatusPill(text: "\(days)d left", tone: asset.warrantyStatus.tone)
+                StatusPill(text: "\(DurationText.compact(days: days)) left", tone: asset.warrantyStatus.tone)
             } else {
                 StatusPill(text: asset.warrantyStatus.label, tone: asset.warrantyStatus.tone)
             }

@@ -132,7 +132,7 @@ struct QueryEngine {
                 case .expired: text = "The warranty for \(asset.name) ended on \(asset.warrantyExpiration!.formatted(date: .long, time: .omitted))."
                 case .active, .expiringSoon:
                     let days = asset.warrantyDaysRemaining ?? 0
-                    text = "\(asset.name) is covered until \(asset.warrantyExpiration!.formatted(date: .long, time: .omitted)) (\(days) days left)\(asset.warrantyIsEstimated ? ", based on an estimated date" : "")."
+                    text = "\(asset.name) is covered until \(asset.warrantyExpiration!.formatted(date: .long, time: .omitted)) (\(DurationText.long(days: days)) left)\(asset.warrantyIsEstimated ? ", based on an estimated date" : "")."
                 }
                 return AssistantAnswer(question: question, text: text, records: [.asset(asset)], found: status != .unknown)
             }

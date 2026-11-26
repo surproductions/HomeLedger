@@ -80,6 +80,23 @@ extension Asset {
     }
 }
 
+/// Human-friendly remaining-time labels ("12d", "5 mo", "3 yr").
+enum DurationText {
+    static func compact(days: Int) -> String {
+        if days < 60 { return "\(days)d" }
+        if days < 730 { return "\(days / 30) mo" }
+        return "\(days / 365) yr"
+    }
+
+    static func long(days: Int) -> String {
+        if days == 1 { return "1 day" }
+        if days < 60 { return "\(days) days" }
+        if days < 730 { return "\(days / 30) months" }
+        let years = days / 365
+        return years == 1 ? "1 year" : "\(years) years"
+    }
+}
+
 /// Computes warranty expiration from a stated coverage period.
 enum WarrantyMath {
     static func expiration(start: Date, months: Int, calendar: Calendar = .current) -> Date? {

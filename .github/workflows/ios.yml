@@ -79,7 +79,7 @@ jobs:
             -only-testing:HomeLedgerTests \
             -resultBundlePath build/UnitTests.xcresult \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee unit-tests.log | grep --line-buffered -E "Test Case .*(passed|failed)|error:|Executed|\*\* TEST" || true
-          grep -q "\*\* TEST SUCCEEDED \*\*" unit-tests.log
+          grep -qE "\*\* TEST (EXECUTE )?SUCCEEDED \*\*" unit-tests.log
 
       - name: UI tests
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_ui_tests }}
@@ -93,7 +93,7 @@ jobs:
             -only-testing:HomeLedgerUITests \
             -resultBundlePath build/UITests.xcresult \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee ui-tests.log | grep --line-buffered -E "Test Case .*(passed|failed)|error:|Executed|\*\* TEST" || true
-          grep -q "\*\* TEST SUCCEEDED \*\*" ui-tests.log
+          grep -qE "\*\* TEST (EXECUTE )?SUCCEEDED \*\*" ui-tests.log
 
       - name: Capture screenshots
         if: always()

@@ -10,8 +10,9 @@ struct ReportBuilderView: View {
     @Query private var allAssets: [Asset]
 
     @State private var homeID: UUID?
-    @State private var selectedRooms: Set<UUID> = []
-    @State private var selectedCategories: Set<String> = []
+    @State private var excludedRooms: Set<UUID> = []
+    @State private var excludedCategories: Set<String> = []
+    @State private var includeUnassigned = true
     @State private var includeArchived = false
     @State private var options = ReportOptions()
     @State private var generated: GeneratedReport?
@@ -31,8 +32,8 @@ struct ReportBuilderView: View {
         allAssets.filter { a in
             (home == nil || a.home?.id == home?.id) &&
                 (includeArchived || !a.isArchived) &&
-                (selectedRooms.isEmpty || (a.room.map { selectedRooms.contains($0.id) } ?? false)) &&
-                (selectedCategories.isEmpty || selectedCategories.contains(a.category))
+                (a.room.map { !excludedRooms.contains($0.id) } ?? includeUnassigned) &&
+                !excludedCategories.contains(a.category)
         }
     }
 
@@ -41,7 +42,7 @@ struct ReportBuilderView: View {
             Form {
                 Section {
                     if homes.count > 1 {
-                        Picker("Home", selection: Binding(get: { home?.id }, set: { homeID = $0; selectedRooms = [] })) {
+                        Picker("Home", selection: Binding(get: { home?.id }, set: { homeID = $0; excludedRooms = [] })) {
                             ForEach(homes) { Text($0.name).tag(Optional($0.id)) }
                         }
                     }
@@ -51,21 +52,27 @@ struct ReportBuilderView: View {
 
                 Section {
                     ForEach(home?.sortedRooms ?? []) { room in
-                        Toggle(isOn: Binding(get: { selectedRooms.contains(room.id) }, set: { if $0 { selectedRooms.insert(room.id) } else { selectedRooms.remove(room.id) } })) {
+                        Toggle(isOn: Binding(get: { !excludedRooms.contains(room.id) }, set: { if $0 { excludedRooms.remove(room.id) } else { excludedRooms.insert(room.id) } })) {
                             Label(room.name, systemImage: room.symbolName)
                         }
                     }
-                } header: { Text("Rooms") } footer: { Text(selectedRooms.isEmpty ? "All rooms are included." : "\(selectedRooms.count) room(s) selected.") }
+                    Toggle(isOn: $includeUnassigned) { Label("Unassigned items", systemImage: "tray") }
+                } header: { Text("Rooms") } footer: {
+                    let total = (home?.sortedRooms ?? []).count
+                    Text(excludedRooms.isEmpty ? "All rooms are included." : "\(total - excludedRooms.count) of \(total) rooms included.")
+                }
 
                 Section {
                     let categoryKeys = Array(Set(allAssets.filter { $0.home?.id == home?.id }.map(\.category))).sorted()
                     ForEach(categoryKeys, id: \.self) { key in
                         let info = CategoryInfo.resolve(key)
-                        Toggle(isOn: Binding(get: { selectedCategories.contains(key) }, set: { if $0 { selectedCategories.insert(key) } else { selectedCategories.remove(key) } })) {
+                        Toggle(isOn: Binding(get: { !excludedCategories.contains(key) }, set: { if $0 { excludedCategories.remove(key) } else { excludedCategories.insert(key) } })) {
                             Label(info.name, systemImage: info.symbol)
                         }
                     }
-                } header: { Text("Categories") } footer: { Text(selectedCategories.isEmpty ? "All categories are included." : "\(selectedCategories.count) categor\(selectedCategories.count == 1 ? "y" : "ies") selected.") }
+                } header: { Text("Categories") } footer: {
+                    Text(excludedCategories.isEmpty ? "All categories are included." : "\(excludedCategories.count) categor\(excludedCategories.count == 1 ? "y" : "ies") excluded.")
+                }
 
                 Section {
                     Toggle("Photos", isOn: Binding(get: { options.includePhotos && app.isPremium }, set: { v in
