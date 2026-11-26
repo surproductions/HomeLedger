@@ -45,15 +45,15 @@ enum RecordRef: Hashable, Identifiable {
     var subtitle: String {
         switch self {
         case .asset(let a):
-            return [a.room?.name, a.displaySubtitle].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+            return joinedParts([a.room?.name, a.displaySubtitle], separator: " · ")
         case .room(let r):
             return "\(r.activeAssets.count) items"
         case .document(let d):
-            return [d.kind.label, d.asset?.name].compactMap { $0 }.joined(separator: " · ")
+            return joinedParts([d.kind.label, d.asset?.name], separator: " · ")
         case .task(let t):
             return t.isArchived ? "Completed" : TaskDueState.evaluate(due: t.dueDate).label
         case .service(let s):
-            return [s.date.formatted(date: .abbreviated, time: .omitted), s.asset?.name].compactMap { $0 }.joined(separator: " · ")
+            return joinedParts([s.date.formatted(date: .abbreviated, time: .omitted), s.asset?.name], separator: " · ")
         case .expense(let e):
             return "\(Money.format(cents: e.amountCents)) · \(e.date.formatted(date: .abbreviated, time: .omitted))"
         }

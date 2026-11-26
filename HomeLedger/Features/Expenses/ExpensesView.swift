@@ -152,7 +152,7 @@ struct ExpenseRow: View {
     let expense: Expense
     var body: some View {
         RecordRow(symbol: expense.category.symbol, tint: Theme.tintPurple, title: expense.title,
-                  subtitle: [expense.date.formatted(date: .abbreviated, time: .omitted), expense.asset?.name, expense.vendor.isEmpty ? nil : expense.vendor].compactMap { $0 }.joined(separator: " · "),
+                  subtitle: joinedParts([expense.date.formatted(date: .abbreviated, time: .omitted), expense.asset?.name, expense.vendor.isEmpty ? nil : expense.vendor], separator: " · "),
                   trailing: Money.format(cents: expense.amountCents), trailingDetail: expense.category.label)
     }
 }

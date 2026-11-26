@@ -48,7 +48,7 @@ struct AssetListView: View {
         case .name: items.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         case .recent: items.sort { $0.createdAt > $1.createdAt }
         case .purchaseDate: items.sort { ($0.purchaseDate ?? .distantPast) > ($1.purchaseDate ?? .distantPast) }
-        case .value: items.sort { ($0.replacementValueCents ?? $0.purchasePriceCents ?? 0) > ($1.replacementValueCents ?? $1.purchasePriceCents ?? 0) }
+        case .value: items.sort { $0.recordedValueCents > $1.recordedValueCents }
         case .warranty: items.sort { ($0.warrantyExpiration ?? .distantFuture) < ($1.warrantyExpiration ?? .distantFuture) }
         }
         if filter.recentOnly { items = Array(items.prefix(30)) }

@@ -177,7 +177,7 @@ struct AssetDetailView: View {
             VStack(spacing: 0) {
                 DetailRow(label: "Category", value: asset.categoryInfo.name)
                 Divider().overlay(Theme.hairline)
-                DetailRow(label: "Location", value: [asset.home?.name, asset.room?.name ?? "Unassigned"].compactMap { $0 }.joined(separator: " › "))
+                DetailRow(label: "Location", value: joinedParts([asset.home?.name, asset.room?.name ?? "Unassigned"], separator: " › "))
                 if !asset.brand.isEmpty { Divider().overlay(Theme.hairline); DetailRow(label: "Brand", value: asset.brand) }
                 if !asset.modelNumber.isEmpty { Divider().overlay(Theme.hairline); DetailRow(label: "Model", value: asset.modelNumber, copyable: true) }
                 Divider().overlay(Theme.hairline)

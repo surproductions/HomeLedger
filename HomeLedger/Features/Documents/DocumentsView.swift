@@ -97,7 +97,7 @@ struct DocumentRow: View {
             DocumentThumbnail(document: document, size: 46)
             VStack(alignment: .leading, spacing: 3) {
                 Text(document.title).font(.body.weight(.medium)).foregroundStyle(Theme.ink).lineLimit(2)
-                Text([document.kind.label, document.asset?.name, document.vendor.isEmpty ? nil : document.vendor].compactMap { $0 }.joined(separator: " · "))
+                Text(joinedParts([document.kind.label, document.asset?.name, document.vendor.isEmpty ? nil : document.vendor], separator: " · "))
                     .font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(1)
             }
             Spacer(minLength: 8)

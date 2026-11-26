@@ -93,8 +93,9 @@ struct InventoryReportBuilder {
         UIBezierPath(roundedRect: CGRect(x: margin, y: y, width: contentWidth, height: 110), cornerRadius: 14).fill()
         _ = drawText("HOMELEDGER", font: .systemFont(ofSize: 9, weight: .semibold), color: UIColor.white.withAlphaComponent(0.75), at: CGPoint(x: margin + 20, y: y + 18), width: contentWidth - 40, kern: 1.5)
         _ = drawText(options.title, font: .systemFont(ofSize: 24, weight: .bold), color: .white, at: CGPoint(x: margin + 20, y: y + 34), width: contentWidth - 40)
-        let sub = [options.homeName, "Generated \(now.formatted(date: .long, time: .shortened))", options.preparedBy.isEmpty ? nil : "Prepared by \(options.preparedBy)"]
-            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "  ·  ")
+        let generated: String? = "Generated \(now.formatted(date: .long, time: .shortened))"
+        let prepared: String? = options.preparedBy.isEmpty ? nil : "Prepared by \(options.preparedBy)"
+        let sub = joinedParts([options.homeName, generated, prepared], separator: "  ·  ")
         _ = drawText(sub, font: .systemFont(ofSize: 11), color: UIColor.white.withAlphaComponent(0.9), at: CGPoint(x: margin + 20, y: y + 72), width: contentWidth - 40)
         y += 126
 
@@ -122,8 +123,8 @@ struct InventoryReportBuilder {
 
     private func detailLines(_ asset: Asset, options: ReportOptions) -> [String] {
         var lines: [String] = []
-        let identity = [asset.categoryInfo.name, asset.brand, asset.modelNumber.isEmpty ? nil : "Model \(asset.modelNumber)"].compactMap { $0 }.filter { !$0.isEmpty }
-        lines.append(identity.joined(separator: " · "))
+        let model: String? = asset.modelNumber.isEmpty ? nil : "Model \(asset.modelNumber)"
+        lines.append(joinedParts([asset.categoryInfo.name, asset.brand, model]))
         if options.includeSerialNumbers && !asset.serialNumber.isEmpty { lines.append("Serial: \(asset.serialNumber)") }
         if options.includePurchaseDetails {
             var p: [String] = []

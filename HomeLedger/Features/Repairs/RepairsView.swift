@@ -40,7 +40,7 @@ struct RepairsView: View {
                             if i > 0 { RowDivider() }
                             NavigationLink(value: AppRoute.service(r)) {
                                 RecordRow(symbol: r.kind.symbol, tint: Theme.tintOrange, title: r.title,
-                                          subtitle: [r.date.formatted(date: .abbreviated, time: .omitted), r.asset?.name, r.vendor.isEmpty ? nil : r.vendor].compactMap { $0 }.joined(separator: " · "),
+                                          subtitle: joinedParts([r.date.formatted(date: .abbreviated, time: .omitted), r.asset?.name, r.vendor.isEmpty ? nil : r.vendor], separator: " · "),
                                           trailing: r.costCents.map { Money.format(cents: $0) },
                                           pill: r.followUpDate.map { ("Follow-up \($0.formatted(.dateTime.month(.abbreviated).day()))", StatusTone.info) })
                             }

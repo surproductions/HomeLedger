@@ -183,7 +183,7 @@ struct TaskRow: View {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(task.title).font(.body.weight(.medium)).foregroundStyle(Theme.ink).lineLimit(2)
-                        Text([task.recurrence.summary, task.asset?.name ?? task.room?.name].compactMap { $0 }.joined(separator: " · "))
+                        Text(joinedParts([task.recurrence.summary, task.asset?.name ?? task.room?.name], separator: " · "))
                             .font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(1)
                     }
                     Spacer(minLength: 6)

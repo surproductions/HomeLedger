@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Example export options for producing a signed, installable IPA on a Mac with your Apple
+  Developer account. Copy to ExportOptions.plist, set your Team ID, then run:
+
+    xcodebuild archive -project HomeLedger.xcodeproj -scheme HomeLedger \
+      -configuration Release -destination 'generic/platform=iOS' \
+      -archivePath build/HomeLedger.xcarchive DEVELOPMENT_TEAM=YOURTEAMID
+    xcodebuild -exportArchive -archivePath build/HomeLedger.xcarchive \
+      -exportOptionsPlist Config/ExportOptions.plist -exportPath build/export \
+      -allowProvisioningUpdates
+
+  method: "debugging" (development devices), "release-testing" (ad hoc) or "app-store-connect".
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>debugging</string>
+    <key>teamID</key>
+    <string>YOURTEAMID</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>compileBitcode</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+</dict>
+</plist>

@@ -320,7 +320,7 @@ struct AssetRow: View {
             AssetThumbnail(asset: asset)
             VStack(alignment: .leading, spacing: 3) {
                 Text(asset.name).font(.body.weight(.medium)).foregroundStyle(Theme.ink).lineLimit(2)
-                Text([showRoom ? asset.room?.name : nil, asset.displaySubtitle].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                Text(joinedParts([showRoom ? asset.room?.name : nil, asset.displaySubtitle], separator: " · "))
                     .font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(1)
             }
             Spacer(minLength: 8)

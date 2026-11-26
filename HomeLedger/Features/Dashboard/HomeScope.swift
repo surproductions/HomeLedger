@@ -44,7 +44,7 @@ struct ActivityItem: Identifiable {
             }
         }
         for s in services {
-            items.append(ActivityItem(id: "s-\(s.id)", date: s.date, symbol: "wrench.adjustable.fill", tint: .orange, title: s.title, subtitle: [s.kind.label, s.asset?.name].compactMap { $0 }.joined(separator: " · "), ref: .service(s)))
+            items.append(ActivityItem(id: "s-\(s.id)", date: s.date, symbol: "wrench.adjustable.fill", tint: .orange, title: s.title, subtitle: joinedParts([s.kind.label, s.asset?.name], separator: " · "), ref: .service(s)))
         }
         return Array(items.filter { $0.date <= Date.now.addingTimeInterval(60) }.sorted { $0.date > $1.date }.prefix(limit))
     }

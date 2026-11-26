@@ -20,6 +20,18 @@ final class HomeLedgerUITests: XCTestCase {
         element.tap()
     }
 
+    /// Any element whose accessibility label contains `text` (rows combine their children into one label).
+    private func element(containing text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    }
+
+    private func clearAndType(_ field: XCUIElement, _ text: String) {
+        field.tap()
+        let current = (field.value as? String) ?? ""
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+        field.typeText(text)
+    }
+
     private func scrollTo(_ element: XCUIElement, in container: XCUIElement? = nil, maxSwipes: Int = 8) {
         var swipes = 0
         while !element.isHittable && swipes < maxSwipes {
@@ -40,10 +52,10 @@ final class HomeLedgerUITests: XCTestCase {
         waitAndTap(app.buttons["onboarding.finish"])
 
         XCTAssertTrue(app.buttons["quick.addItem"].waitForExistence(timeout: 10), "dashboard is shown")
-        XCTAssertTrue(app.staticTexts["Cedar Cottage"].exists || app.buttons.matching(NSPredicate(format: "label CONTAINS 'Cedar Cottage'")).firstMatch.exists)
+        XCTAssertTrue(element(containing: "Cedar Cottage").exists, "home name is shown")
 
         waitAndTap(app.buttons["tab.myHome"])
-        XCTAssertTrue(app.staticTexts["Kitchen"].waitForExistence(timeout: 5), "default rooms were created")
+        XCTAssertTrue(element(containing: "Kitchen").waitForExistence(timeout: 5), "default rooms were created")
     }
 
     // 2. Add an asset with photos
@@ -56,11 +68,11 @@ final class HomeLedgerUITests: XCTestCase {
         name.typeText("Espresso Machine")
         waitAndTap(app.buttons["asset.testPhoto"])
         app.buttons["asset.testPhoto"].tap()
-        XCTAssertEqual(app.buttons.matching(identifier: "Remove photo").count, 2)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Remove photo'")).count, 2)
         waitAndTap(app.buttons["asset.save"])
 
-        XCTAssertTrue(app.otherElements["asset.gallery"].waitForExistence(timeout: 10) || app.scrollViews.otherElements["asset.gallery"].exists || app.descendants(matching: .any)["asset.gallery"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Espresso Machine"].firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)["asset.gallery"].waitForExistence(timeout: 10), "photos are shown on the new item")
+        XCTAssertTrue(element(containing: "Espresso Machine").exists)
     }
 
     // 3. Attach a receipt and review extracted information
@@ -73,25 +85,23 @@ final class HomeLedgerUITests: XCTestCase {
         let vendor = app.textFields["import.vendor"]
         XCTAssertTrue(vendor.waitForExistence(timeout: 20), "review screen appears after on-device recognition")
         XCTAssertEqual(vendor.value as? String, "Homegoods Depot")
-        XCTAssertTrue(app.staticTexts["Best guess — please check"].firstMatch.exists, "inferred fields are labelled")
-        XCTAssertTrue(app.staticTexts["Detected"].firstMatch.exists)
+        XCTAssertTrue(element(containing: "Best guess").exists, "inferred fields are labelled")
+        XCTAssertTrue(element(containing: "Detected").exists, "explicitly labelled fields are marked as detected")
         let serial = app.textFields["import.serial"]
         scrollTo(serial)
         XCTAssertEqual(serial.value as? String, "FD0112")
 
         // User corrects a field before saving.
-        vendor.tap()
-        vendor.press(forDuration: 1.0)
-        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
-        vendor.typeText("HomeGoods Depot #42")
+        scrollTo(vendor)
+        clearAndType(vendor, "HomeGoods Depot")
 
         let create = app.switches["import.createAsset"]
         scrollTo(create)
         if create.exists { create.tap() }
         waitAndTap(app.buttons["import.save"])
 
-        XCTAssertTrue(app.staticTexts["Bosch 800 Series Dishwasher receipt"].waitForExistence(timeout: 10)
-                      || app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Dishwasher'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(element(containing: "Bosch 800 Series Dishwasher").waitForExistence(timeout: 10), "saved document appears in the library")
+        XCTAssertTrue(element(containing: "HomeGoods Depot").exists, "the corrected vendor was saved")
     }
 
     // 4. Add a warranty and schedule a reminder
@@ -99,12 +109,12 @@ final class HomeLedgerUITests: XCTestCase {
         launch(sample: true)
         waitAndTap(app.buttons["tab.myHome"], timeout: 20)
         waitAndTap(app.buttons["shortcut.items"])
-        let mower = app.staticTexts["Lawn Mower"]
+        let mower = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Lawn Mower'")).firstMatch
         scrollTo(mower)
         waitAndTap(mower)
         waitAndTap(app.buttons["asset.edit"])
 
-        let end = app.buttons["Coverage ends"]
+        let end = app.buttons["asset.warrantyEnd"]
         scrollTo(end)
         waitAndTap(end)
         let reminders = app.switches["asset.warrantyReminders"]
@@ -112,10 +122,10 @@ final class HomeLedgerUITests: XCTestCase {
         XCTAssertEqual(reminders.value as? String, "1", "reminders default to on")
         waitAndTap(app.buttons["asset.save"])
 
-        let remindersRow = app.staticTexts["30d, 14d, 7d before"]
+        XCTAssertTrue(element(containing: "Warranty: Active").waitForExistence(timeout: 5), "warranty is now active")
+        let remindersRow = element(containing: "30d, 14d, 7d before")
         scrollTo(remindersRow)
-        XCTAssertTrue(remindersRow.waitForExistence(timeout: 5), "reminder schedule is shown on the item")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Warranty: '")).firstMatch.exists)
+        XCTAssertTrue(remindersRow.exists, "reminder schedule is shown on the item")
     }
 
     // 5. Create and complete a recurring maintenance task
@@ -142,7 +152,7 @@ final class HomeLedgerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["task.complete.Descale kettle"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "task.complete.Descale kettle").count, 1)
         app.segmentedControls["maintenance.filter"].buttons["History"].tap()
-        XCTAssertTrue(app.staticTexts["Descale kettle"].waitForExistence(timeout: 5), "completion is recorded in history")
+        XCTAssertTrue(element(containing: "Descale kettle").waitForExistence(timeout: 5), "completion is recorded in history")
     }
 
     // 6. Generate and share an inventory PDF
@@ -167,13 +177,13 @@ final class HomeLedgerUITests: XCTestCase {
         scrollTo(backup)
         waitAndTap(backup)
         waitAndTap(app.buttons["backup.export"])
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Backup saved'")).firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(element(containing: "Backup saved").waitForExistence(timeout: 20))
 
         let localBackup = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'backup.local.'")).firstMatch
         waitAndTap(localBackup)
         waitAndTap(app.buttons["Replace all current data…"])
         waitAndTap(app.alerts.buttons["Replace"])
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Restored:'")).firstMatch.waitForExistence(timeout: 20))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'safety backup'")).firstMatch.exists)
+        XCTAssertTrue(element(containing: "Restored:").waitForExistence(timeout: 20))
+        XCTAssertTrue(element(containing: "safety backup").exists, "a safety backup was written before replacing")
     }
 }

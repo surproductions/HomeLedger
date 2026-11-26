@@ -167,11 +167,11 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: "You have \(items.count) \(category?.info.name.lowercased() ?? "items") recorded.", records: items.prefix(30).map(RecordRef.asset), found: !items.isEmpty)
         }
         if q.contains("worth") || q.contains("value") {
-            let total = activeAssets.map { $0.replacementValueCents ?? $0.purchasePriceCents ?? 0 }.reduce(0, +)
+            let total = activeAssets.map(\.recordedValueCents).reduce(0, +)
             let missing = activeAssets.filter { $0.replacementValueCents == nil && $0.purchasePriceCents == nil }.count
             var text = "Your recorded items total \(Money.format(cents: total, currencyCode: currencyCode)), using replacement value where available and purchase price otherwise."
             if missing > 0 { text += " \(missing) item\(missing == 1 ? " has" : "s have") no value recorded." }
-            return AssistantAnswer(question: question, text: text, records: activeAssets.sorted { ($0.replacementValueCents ?? $0.purchasePriceCents ?? 0) > ($1.replacementValueCents ?? $1.purchasePriceCents ?? 0) }.prefix(10).map(RecordRef.asset), found: !activeAssets.isEmpty)
+            return AssistantAnswer(question: question, text: text, records: activeAssets.sorted { $0.recordedValueCents > $1.recordedValueCents }.prefix(10).map(RecordRef.asset), found: !activeAssets.isEmpty)
         }
 
         // Fallback: keyword search

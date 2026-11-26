@@ -24,7 +24,7 @@ struct DashboardView: View {
         assets.filter { $0.warrantyStatus == .expiringSoon }.sorted { ($0.warrantyExpiration ?? .distantFuture) < ($1.warrantyExpiration ?? .distantFuture) }
     }
     private var activeWarranties: Int { assets.filter { $0.warrantyStatus == .active || $0.warrantyStatus == .expiringSoon }.count }
-    private var totalValueCents: Int { assets.map { ($0.replacementValueCents ?? $0.purchasePriceCents ?? 0) * max(1, $0.quantity) }.reduce(0, +) }
+    private var totalValueCents: Int { assets.map { $0.recordedValueCents * max(1, $0.quantity) }.reduce(0, +) }
     private var yearSpendCents: Int {
         let calc = ExpenseCalculator()
         let year = Calendar.current.component(.year, from: .now)

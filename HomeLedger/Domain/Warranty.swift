@@ -68,6 +68,13 @@ extension Asset {
         return purchase + nonPurchase.reduce(0, +)
     }
 
+    /// Replacement value when recorded, otherwise purchase price, otherwise zero.
+    var recordedValueCents: Int {
+        if let r = replacementValueCents { return r }
+        if let p = purchasePriceCents { return p }
+        return 0
+    }
+
     var repairCostCents: Int {
         (expenses ?? []).filter { $0.category == .repair }.map(\.amountCents).reduce(0, +)
     }

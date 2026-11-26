@@ -257,3 +257,9 @@ enum Preferences {
         defaults.object(forKey: notificationsEnabledKey) as? Bool ?? true
     }
 }
+
+/// Joins the non-empty parts with a separator. Taking `[String?]` explicitly keeps
+/// type-checking of mixed optional/ternary literals fast.
+func joinedParts(_ parts: [String?], separator: String = " · ") -> String {
+    parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: separator)
+}
