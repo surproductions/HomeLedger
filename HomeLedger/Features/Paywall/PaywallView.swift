@@ -7,6 +7,8 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var selectedID: String = StoreConfiguration.yearlyProductID
+    /// Only advertise the free trial to people StoreKit says are eligible for it.
+    @State private var trialEligible = false
 
     private var store: StoreManager { app.store }
 
@@ -66,7 +68,12 @@ struct PaywallView: View {
             .canvasBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.close") } }
-            .task { if store.products.isEmpty { await store.loadProducts() } }
+            .task {
+                if store.products.isEmpty { await store.loadProducts() }
+                if let subscription = store.yearly?.subscription, subscription.introductoryOffer != nil {
+                    trialEligible = await subscription.isEligibleForIntroOffer
+                }
+            }
         }
     }
 
@@ -111,7 +118,7 @@ struct PaywallView: View {
 
     private var ctaTitle: String {
         guard let p = store.products.first(where: { $0.id == selectedID }) else { return "Continue" }
-        if p.id == StoreConfiguration.yearlyProductID, p.subscription?.introductoryOffer != nil { return "Start free trial" }
+        if p.id == StoreConfiguration.yearlyProductID, trialEligible, p.subscription?.introductoryOffer?.paymentMode == .freeTrial { return "Start free trial" }
         return "Continue — \(p.displayPrice)"
     }
 
@@ -135,7 +142,7 @@ struct PaywallView: View {
     }
 
     private func subtitle(for product: Product) -> String {
-        if let offer = product.subscription?.introductoryOffer, offer.paymentMode == .freeTrial {
+        if trialEligible, let offer = product.subscription?.introductoryOffer, offer.paymentMode == .freeTrial {
             return "\(offer.period.value) \(String(describing: offer.period.unit).lowercased())\(offer.period.value == 1 ? "" : "s") free, then billed yearly"
         }
         return product.id == StoreConfiguration.lifetimeProductID ? "Pay once, keep Premium" : product.description
