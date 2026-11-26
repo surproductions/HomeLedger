@@ -4,6 +4,18 @@
 
 <p align="center"><img src="HomeLedger/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" width="120" alt="HomeLedger app icon"></p>
 
+## Screenshots
+
+Captured automatically by CI on the iOS 26.2 simulator (iPhone 17 Pro) using the built-in sample household.
+
+| Dashboard | My Home | Item detail | Maintenance |
+|---|---|---|---|
+| <img src="docs/screenshots/01-dashboard.jpg" width="200"> | <img src="docs/screenshots/02-my-home.jpg" width="200"> | <img src="docs/screenshots/05-asset-detail.jpg" width="200"> | <img src="docs/screenshots/03-maintenance.jpg" width="200"> |
+| **Documents** | **Warranties** | **Expenses** | **Ask (local assistant)** |
+| <img src="docs/screenshots/04-documents.jpg" width="200"> | <img src="docs/screenshots/06-warranties.jpg" width="200"> | <img src="docs/screenshots/07-expenses.jpg" width="200"> | <img src="docs/screenshots/08-assistant.jpg" width="200"> |
+| **Onboarding** | **Inventory report** | **Dark mode** | **Largest text size** |
+| <img src="docs/screenshots/00-onboarding.jpg" width="200"> | <img src="docs/screenshots/09-report.jpg" width="200"> | <img src="docs/screenshots/12-dashboard-dark.jpg" width="200"> | <img src="docs/screenshots/14-dashboard-large-text.jpg" width="200"> |
+
 ## Features
 
 | Area | What you get |
