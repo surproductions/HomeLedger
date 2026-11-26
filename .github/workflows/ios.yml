@@ -1,0 +1,159 @@
+name: iOS build, test & package
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a GitHub pre-release with the unsigned IPA"
+        type: boolean
+        default: false
+      run_ui_tests:
+        description: "Run UI tests"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: HomeLedger
+
+jobs:
+  build-test-package:
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          echo "Using $XC"
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          zip -qr HomeLedger-xcodeproj.zip HomeLedger.xcodeproj
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          UDID=$(python3 scripts/pick_simulator.py)
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Simulator: $UDID"
+          xcrun simctl boot "$UDID" || true
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project HomeLedger.xcodeproj -scheme "$SCHEME" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-for-testing.log | grep -E "error:|warning: .*(deprecated|unused)|BUILD|\*\*" || true
+          grep -q "TEST BUILD SUCCEEDED" build-for-testing.log || { grep -E "error:" build-for-testing.log | head -80; exit 1; }
+
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project HomeLedger.xcodeproj -scheme "$SCHEME" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            -only-testing:HomeLedgerTests \
+            -resultBundlePath build/UnitTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee unit-tests.log | grep -E "Test Case .*(passed|failed)|error:|Executed|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" unit-tests.log
+
+      - name: UI tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_ui_tests }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project HomeLedger.xcodeproj -scheme "$SCHEME" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            -only-testing:HomeLedgerUITests \
+            -resultBundlePath build/UITests.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ui-tests.log | grep -E "Test Case .*(passed|failed)|error:|Executed|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" ui-tests.log
+
+      - name: Capture screenshots
+        if: always()
+        run: |
+          bash scripts/capture_screenshots.sh "${{ steps.sim.outputs.udid }}" build/dd screenshots || true
+          ls -la screenshots || true
+
+      - name: Archive (unsigned) and package IPA
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project HomeLedger.xcodeproj -scheme "$SCHEME" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/HomeLedger.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee archive.log | grep -E "error:|\*\* ARCHIVE" || true
+          grep -q "ARCHIVE SUCCEEDED" archive.log
+          mkdir -p dist/Payload
+          cp -R build/HomeLedger.xcarchive/Products/Applications/HomeLedger.app dist/Payload/
+          (cd dist && zip -qry HomeLedger-1.0.0-unsigned.ipa Payload && rm -rf Payload)
+          (cd build && zip -qry ../dist/HomeLedger-1.0.0.xcarchive.zip HomeLedger.xcarchive)
+          unzip -l dist/HomeLedger-1.0.0-unsigned.ipa | tail -3
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" build/HomeLedger.xcarchive/Products/Applications/HomeLedger.app/Info.plist
+          shasum -a 256 dist/* | tee dist/SHA256SUMS.txt
+
+      - name: Upload IPA & archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: HomeLedger-unsigned-ipa
+          path: |
+            dist/*.ipa
+            dist/*.xcarchive.zip
+            dist/SHA256SUMS.txt
+
+      - name: Upload generated Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: HomeLedger-xcodeproj
+          path: HomeLedger-xcodeproj.zip
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload logs & results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-and-results
+          path: |
+            *.log
+            build/*.xcresult
+          if-no-files-found: ignore
+
+      - name: Publish pre-release
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.release) || contains(github.event.head_commit.message, '[release]') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v1.0.0-build.${{ github.run_number }}"
+          (cd screenshots 2>/dev/null && zip -qr ../dist/HomeLedger-screenshots.zip .) || true
+          gh release create "$TAG" dist/*.ipa dist/*.xcarchive.zip dist/SHA256SUMS.txt dist/HomeLedger-screenshots.zip HomeLedger-xcodeproj.zip \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "HomeLedger 1.0.0 (build ${{ github.run_number }})" \
+            --notes-file docs/RELEASE_NOTES.md
