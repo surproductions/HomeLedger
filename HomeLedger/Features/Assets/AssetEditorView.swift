@@ -204,6 +204,7 @@ struct AssetEditorView: View {
     private var notesSection: some View {
         Section("Notes") {
             TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
+        }
     }
 
     private var existingPhotos: [AssetPhoto] { (asset?.sortedPhotos ?? []).filter { !removedPhotos.contains($0.id) } }
