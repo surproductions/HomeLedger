@@ -6,7 +6,7 @@
 
 ## Download
 
-**[HomeLedger 1.0.0 (build 12) — GitHub pre-release](https://github.com/surproductions/HomeLedger/releases/tag/v1.0.0-build.12)**: unsigned IPA, Xcode archive, generated Xcode project, screenshots and SHA-256 checksums. Every asset was produced by the CI run in which all 81 unit tests and all 7 UI tests passed.
+**[HomeLedger 1.0.1 (build 14) — GitHub pre-release](https://github.com/surproductions/HomeLedger/releases/tag/v1.0.1-build.14)**: unsigned IPA, Xcode archive, generated Xcode project, screenshots and SHA-256 checksums. Every asset was produced by the CI run in which all 81 unit tests and all 9 UI tests passed.
 
 The IPA is **not code-signed**. Re-sign it with your Apple ID or certificate before installing (see [Installing on an iPhone](#installing-on-an-iphone-signing)), or build from source in Xcode.
 
