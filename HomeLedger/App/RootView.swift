@@ -88,6 +88,13 @@ extension View {
         self
             .tag(tab)
             .toolbar(.hidden, for: .tabBar)
+            .tabScreenBehavior()
+    }
+
+    /// Bottom room for the floating bar + scroll-driven hiding. Applied to tab roots and to every
+    /// pushed screen (navigation destinations don't inherit these from the stack).
+    func tabScreenBehavior() -> some View {
+        self
             .contentMargins(.bottom, FloatingTabBar.reservedHeight, for: .scrollContent)
             .modifier(HidesTabBarOnScroll())
     }
@@ -239,10 +246,10 @@ struct SheetHost: View {
 extension View {
     func withAppDestinations() -> some View {
         navigationDestination(for: AppRoute.self) { route in
-            AppRouteView(route: route)
+            AppRouteView(route: route).tabScreenBehavior()
         }
         .navigationDestination(for: RecordRef.self) { ref in
-            RecordRefView(ref: ref)
+            RecordRefView(ref: ref).tabScreenBehavior()
         }
     }
 }
