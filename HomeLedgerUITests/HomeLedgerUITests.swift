@@ -25,6 +25,16 @@ final class HomeLedgerUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
+    /// Polls until any of the elements exists (system UI differs between iOS versions).
+    private func waitForAny(_ elements: [XCUIElement], timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if elements.contains(where: { $0.exists }) { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        } while Date() < deadline
+        return false
+    }
+
     private func clearAndType(_ field: XCUIElement, _ text: String) {
         field.tap()
         let current = (field.value as? String) ?? ""
@@ -162,11 +172,13 @@ final class HomeLedgerUITests: XCTestCase {
         let generate = app.buttons["report.generate"]
         scrollTo(generate)
         waitAndTap(generate)
-        XCTAssertTrue(app.descendants(matching: .any)["report.preview"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.navigationBars.staticTexts.matching(NSPredicate(format: "label CONTAINS 'items'")).firstMatch.exists)
+        // The preview's title reads "N items · M page(s)" once the PDF has been generated.
+        let previewTitle = app.staticTexts.matching(NSPredicate(format: "label CONTAINS ' items · ' AND label CONTAINS 'page'")).firstMatch
+        XCTAssertTrue(previewTitle.waitForExistence(timeout: 30), "the generated PDF preview is shown")
         waitAndTap(app.buttons["report.share"])
-        let shareSheet = app.otherElements["ActivityListView"]
-        XCTAssertTrue(shareSheet.waitForExistence(timeout: 10) || app.collectionViews.cells.firstMatch.waitForExistence(timeout: 5), "share sheet is presented")
+        XCTAssertTrue(waitForAny([app.otherElements["ActivityListView"], app.buttons["Copy"], app.staticTexts["Copy"],
+                                  app.collectionViews.cells.firstMatch, app.buttons["Save to Files"]], timeout: 15),
+                      "the system share sheet is presented")
     }
 
     // 7. Export and restore a backup
