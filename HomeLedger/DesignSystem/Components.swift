@@ -423,12 +423,21 @@ struct MoneyField: View {
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .focused($focused)
-                .onAppear { text = cents.map { Money.decimal(fromCents: $0).formatted(.number.precision(.fractionLength(2)).grouping(.never)) } ?? "" }
+                .onAppear { text = Self.display(cents) }
+                .onChange(of: cents) { _, newValue in
+                    // Keep the text in sync with external changes, but never rewrite while the user types.
+                    if !focused && Money.parse(text).map(Money.cents(from:)) != newValue { text = Self.display(newValue) }
+                }
                 .onChange(of: text) { _, newValue in
-                    cents = Money.parse(newValue).map(Money.cents(from:))
+                    let parsed = Money.parse(newValue).map(Money.cents(from:))
+                    if parsed != cents { cents = parsed }
                 }
                 .accessibilityLabel(title)
         }
+    }
+
+    private static func display(_ cents: Int?) -> String {
+        cents.map { Money.decimal(fromCents: $0).formatted(.number.precision(.fractionLength(2)).grouping(.never)) } ?? ""
     }
 }
 

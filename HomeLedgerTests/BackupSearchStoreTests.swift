@@ -72,7 +72,8 @@ final class BackupTests: HomeLedgerTestCase {
         _ = try seed()
         let svc = BackupService(context: context, files: files)
         let archive = try BackupService.validate(try svc.exportData()).archive
-        let safetyDir = filesDirectory.appendingPathComponent("safety")
+        let safetyDir = FileManager.default.temporaryDirectory.appendingPathComponent("HLSafety-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: safetyDir) }
         let report = try svc.restore(archive, mode: .replace, safetyBackupDirectory: safetyDir)
         let safety = try XCTUnwrap(report.safetyBackupURL)
         XCTAssertNoThrow(try BackupService.validate(Data(contentsOf: safety)), "safety backup is itself a valid backup")
@@ -101,6 +102,23 @@ final class BackupTests: HomeLedgerTestCase {
         XCTAssertEqual(fetch(ServiceRecord.self).count, 1)
         XCTAssertEqual(fetch(Home.self).count, 1)
         XCTAssertGreaterThan(report.skipped, 0)
+    }
+
+    func testFailedReplaceRollsBackAndKeepsExistingData() throws {
+        _ = try seed()
+        let svc = BackupService(context: context, files: files)
+        var archive = svc.makeArchive()
+        archive.files.append(BackupArchive.FileBlob(name: "missing-folder/unwritable.png", data: pngData()))
+        let filesBefore = Set(files.allFileNames())
+
+        let safetyDir = FileManager.default.temporaryDirectory.appendingPathComponent("HLSafety-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: safetyDir) }
+        XCTAssertThrowsError(try svc.restore(archive, mode: .replace, safetyBackupDirectory: safetyDir))
+
+        XCTAssertEqual(fetch(Asset.self).map(\.serialNumber), ["DW-1"], "existing records survive a failed restore")
+        XCTAssertEqual(fetch(Home.self).count, 1)
+        XCTAssertEqual(fetch(MaintenanceTask.self).count, 1)
+        XCTAssertTrue(filesBefore.isSubset(of: Set(files.allFileNames())), "no existing files were removed")
     }
 
     func testValidationRejectsBadFiles() throws {
@@ -200,6 +218,28 @@ final class SearchAndAssistantTests: HomeLedgerTestCase {
         let nonsense = engine.answer("what is the meaning of life", corpus: corpus)
         XCTAssertFalse(nonsense.found)
         XCTAssertTrue(nonsense.records.isEmpty, "never fabricates an answer")
+    }
+
+    func testAssistantUsesWholeWordsAndRoutesValueQuestions() throws {
+        let home = try XCTUnwrap(fetch(Home.self).first)
+        context.insert(Room(name: "Den", home: home))
+        let engine = QueryEngine(now: Date.now, calendar: .current, currencyCode: "USD")
+
+        let tv = engine.answer("Is my smart TV under warranty?", corpus: corpus)
+        XCTAssertEqual(tv.records.first?.title, "65\" OLED TV", "'smart' must not be read as the Art category")
+
+        let garden = engine.answer("What's in the garden?", corpus: corpus)
+        XCTAssertFalse(garden.records.contains { if case .room(let r) = $0 { return r.name == "Den" } else { return false } }, "'den' must not match 'garden'")
+
+        let worth = engine.answer("How much is everything worth?", corpus: corpus)
+        XCTAssertTrue(worth.text.hasPrefix("Your recorded items total"), worth.text)
+
+        let unknown = engine.answer("Find the manual for my hovercraft", corpus: corpus)
+        XCTAssertFalse(unknown.found)
+        XCTAssertTrue(unknown.records.isEmpty, "doesn't return unrelated manuals for an item that doesn't exist")
+
+        let all = engine.answer("Show all receipts", corpus: corpus)
+        XCTAssertTrue(all.found)
     }
 
     func testAssistantRoomContents() {

@@ -145,6 +145,8 @@ struct TaskEditorView: View {
             context.insert(t)
             return t
         }()
+        // Editing the date or rhythm starts a new schedule anchored at the chosen date.
+        if target.dueDate != dueDate || target.recurrence != recurrence { target.recurrenceAnchor = nil }
         target.title = title.trimmingCharacters(in: .whitespaces)
         target.details = details
         target.dueDate = dueDate
@@ -159,12 +161,7 @@ struct TaskEditorView: View {
         target.home = target.asset?.home ?? target.home ?? home
         target.updatedAt = .now
         try? context.save()
-        Task {
-            if remindersEnabled && Preferences.notificationsEnabled && !app.launch.isUITesting {
-                _ = await NotificationService.shared.requestPermission()
-            }
-            await NotificationService.shared.sync(context: context)
-        }
+        if remindersEnabled { app.requestPermissionAndSyncReminders(context) } else { app.syncReminders(context) }
         app.showToast(task == nil ? "Task added" : "Task updated")
         dismiss()
     }

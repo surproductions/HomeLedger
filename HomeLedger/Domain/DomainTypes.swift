@@ -149,7 +149,13 @@ enum MaintenancePriority: String, CaseIterable, Identifiable, Codable, Comparabl
     case low, normal, high
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
-    private var rank: Int { switch self { case .low: 0; case .normal: 1; case .high: 2 } }
+    private var rank: Int {
+        switch self {
+        case .low: return 0
+        case .normal: return 1
+        case .high: return 2
+        }
+    }
     static func < (lhs: MaintenancePriority, rhs: MaintenancePriority) -> Bool { lhs.rank < rhs.rank }
 }
 
@@ -191,8 +197,8 @@ enum Money {
     }
 
     static func format(cents: Int, currencyCode: String = Preferences.currencyCode, showCents: Bool = true) -> String {
-        let decimal = decimal(fromCents: cents)
-        return decimal.formatted(.currency(code: currencyCode).precision(.fractionLength(showCents ? 2 : 0)))
+        let value = Money.decimal(fromCents: cents)
+        return value.formatted(.currency(code: currencyCode).precision(.fractionLength(showCents ? 2 : 0)))
     }
 
     static func format(_ decimal: Decimal, currencyCode: String = Preferences.currencyCode) -> String {

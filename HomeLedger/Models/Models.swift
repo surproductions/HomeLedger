@@ -274,6 +274,9 @@ final class MaintenanceTask {
     var title: String = ""
     var details: String = ""
     var dueDate: Date = Date()
+    /// First occurrence of the current schedule. Fixed-schedule recurrences are always computed from
+    /// this anchor so month-end dates don't drift (Jan 31 → Feb 29 → Mar 31). Reset when the schedule is edited.
+    var recurrenceAnchor: Date?
     var recurrenceUnitRaw: String = RecurrenceUnit.none.rawValue
     var recurrenceInterval: Int = 1
     var recurrenceBasisRaw: String = RecurrenceBasis.schedule.rawValue

@@ -6,7 +6,6 @@ struct OnboardingView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(Preferences.onboardingCompleteKey) private var onboardingComplete = false
-    @AppStorage(Preferences.notificationsEnabledKey) private var notificationsEnabled = true
     @Query private var homes: [Home]
 
     @State private var step = 0
@@ -189,7 +188,8 @@ struct OnboardingView: View {
         let home = DataService(context: context).createHome(name: homeName.isEmpty ? "My Home" : homeName, type: homeType, roomNames: roomSpecs)
         try? context.save()
         app.selectedHomeID = home.id
-        notificationsEnabled = requestNotifications
+        // "Not now" only defers the system prompt — reminders stay on and permission is requested
+        // later, in context, when the user first saves a task or warranty.
         if requestNotifications && !app.launch.isUITesting {
             Task { _ = await NotificationService.shared.requestPermission() }
         }

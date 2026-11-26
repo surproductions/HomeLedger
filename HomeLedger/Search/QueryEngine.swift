@@ -26,7 +26,18 @@ struct QueryEngine {
         "What's in the kitchen?"
     ]
 
-    private static let stopWords: Set<String> = ["the", "my", "a", "an", "i", "did", "do", "does", "when", "what", "whats", "what's", "is", "was", "for", "of", "on", "in", "to", "have", "has", "how", "much", "many", "show", "me", "find", "where", "buy", "bought", "purchase", "purchased", "get", "got", "spent", "spend", "repairing", "repair", "repairs", "fixing", "manual", "receipt", "warranty", "warranties", "invoice", "with", "that", "are", "under", "this", "month", "year", "week", "all", "and", "or", "it", "our", "we", "s", "doc", "document", "documents", "expiring", "soon", "due", "maintenance", "cost", "costs", "paid", "pay", "on", "total", "items", "item", "inside", "room", "whats", "there"]
+    private static let stopWords: Set<String> = [
+        "the", "my", "a", "an", "i", "did", "do", "does", "when", "what", "whats", "what's", "is", "was", "for",
+        "of", "on", "in", "to", "have", "has", "how", "much", "many", "show", "me", "find", "where", "buy", "bought",
+        "purchase", "purchased", "get", "got", "spent", "spend", "repairing", "repair", "repairs", "fixing",
+        "manual", "receipt", "warranty", "warranties", "invoice", "with", "that", "are", "under", "this", "month",
+        "year", "week", "all", "and", "or", "it", "our", "we", "s", "doc", "document", "documents", "expiring",
+        "soon", "due", "maintenance", "cost", "costs", "paid", "pay", "total", "items", "item", "inside", "room",
+        "there", "receipts", "manuals", "invoices", "policy", "policies", "insurance", "instructions", "guide",
+        "user", "paperwork", "card", "certificate", "open", "list", "see", "please", "can", "you", "any", "which",
+        "about", "need", "should", "give", "tell", "from", "at", "by", "spending", "repaired", "fixed", "value",
+        "worth", "overdue", "late", "today", "next", "last", "ago"
+    ]
 
     private static let synonyms: [String: [String]] = [
         "fridge": ["refrigerator"], "refrigerator": ["fridge"],
@@ -43,9 +54,11 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: "Ask a question about your home records.", records: [], found: false)
         }
         let activeAssets = corpus.assets.filter { !$0.isArchived }
+        let words = Set(SearchService.tokens(q))
+        func has(_ candidates: String...) -> Bool { candidates.contains { words.contains($0) } }
 
         // 1. Purchase date
-        if (q.contains("when") || q.contains("date")) && (q.contains("buy") || q.contains("bought") || q.contains("purchase")) {
+        if has("when", "date") && (has("buy", "bought", "purchase", "purchased")) {
             guard let asset = bestAsset(for: q, in: activeAssets) else { return notFound(question, "I couldn't find an item matching that in your records.") }
             if let date = asset.purchaseDate {
                 var text = "You bought \(asset.name) on \(date.formatted(date: .long, time: .omitted))"
@@ -57,9 +70,14 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: "\(asset.name) doesn't have a purchase date recorded yet.", records: [.asset(asset)], found: false)
         }
 
-        // 2. Spending
-        if q.contains("how much") || q.contains("spent") || q.contains("spend") || (q.contains("cost") && !q.contains("estimated")) {
-            let repairOnly = q.contains("repair") || q.contains("fix")
+        // 2. Total value ("How much is everything worth?") — checked before spending.
+        if has("worth", "value") && !has("spent", "spend", "spending") {
+            return valueAnswer(question, activeAssets)
+        }
+
+        // 3. Spending
+        if q.contains("how much") || has("spent", "spend", "spending", "paid") || (has("cost", "costs") && !has("estimated")) {
+            let repairOnly = has("repair", "repairs", "repairing", "repaired", "fix", "fixing", "fixed")
             let periodRange = period(in: q)
             var expenses = corpus.expenses
             var subject = "in total"
@@ -86,9 +104,13 @@ struct QueryEngine {
                                    records: expenses.sorted { $0.date > $1.date }.prefix(20).map(RecordRef.expense), found: true)
         }
 
-        // 3. Documents
-        if let kind = documentKind(in: q), q.contains("find") || q.contains("where") || q.contains("show") || q.contains("open") || q.contains(kind.rawValue) {
+        // 4. Documents
+        if let kind = documentKind(in: q) {
             let asset = bestAsset(for: q, in: corpus.assets)
+            let named = keywords(in: q)
+            if asset == nil && !named.isEmpty {
+                return notFound(question, "I couldn't find an item matching “\(named.joined(separator: " "))” in your records.")
+            }
             var docs = corpus.documents.filter { $0.kind == kind }
             if let asset { docs = docs.filter { $0.asset?.id == asset.id } }
             if docs.isEmpty {
@@ -99,9 +121,9 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: text, records: docs.map(RecordRef.document), found: true)
         }
 
-        // 4. Warranties
+        // 5. Warranties
         if q.contains("warrant") {
-            let category = assetCategory(in: q)
+            let category = assetCategory(in: words)
             if let asset = bestAsset(for: q, in: activeAssets), category == nil || asset.category == category?.rawValue {
                 let status = asset.warrantyStatus
                 let text: String
@@ -130,11 +152,11 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: "\(assets.count)\(scope) warrant\(assets.count == 1 ? "y is" : "ies are") \(label).", records: assets.map(RecordRef.asset), found: true)
         }
 
-        // 5. Maintenance due
-        if q.contains("maintenance") || q.contains("due") || q.contains("task") || q.contains("overdue") || q.contains("to do") || q.contains("todo") {
+        // 6. Maintenance due
+        if has("maintenance", "due", "task", "tasks", "overdue", "todo", "upkeep", "chores") || q.contains("to do") {
             var tasks = corpus.tasks.filter { !$0.isArchived }
             var label = "coming up"
-            if q.contains("overdue") {
+            if has("overdue", "late") {
                 tasks = tasks.filter { TaskDueState.evaluate(due: $0.dueDate, now: now, calendar: calendar).isOverdue }
                 label = "overdue"
             } else if let p = period(in: q) {
@@ -153,25 +175,18 @@ struct QueryEngine {
             return AssistantAnswer(question: question, text: text + ".", records: tasks.map(RecordRef.task), found: true)
         }
 
-        // 6. Room contents
-        if let room = bestRoom(for: q, in: corpus.rooms), q.contains("in the") || q.contains("in my") || q.contains("room") || q.contains("what") {
+        // 7. Room contents
+        if let room = bestRoom(for: q, in: corpus.rooms), q.contains("in the") || q.contains("in my") || has("room", "what", "whats", "list", "show") {
             let items = room.activeAssets.sorted { $0.name < $1.name }
             if items.isEmpty { return AssistantAnswer(question: question, text: "\(room.name) has no items yet.", records: [.room(room)], found: false) }
             return AssistantAnswer(question: question, text: "\(room.name) has \(items.count) item\(items.count == 1 ? "" : "s").", records: [.room(room)] + items.map(RecordRef.asset), found: true)
         }
 
-        // 7. Counts & value
+        // 8. Counts
         if q.contains("how many") {
-            let category = assetCategory(in: q)
+            let category = assetCategory(in: words)
             let items = category.map { c in activeAssets.filter { $0.category == c.rawValue } } ?? activeAssets
             return AssistantAnswer(question: question, text: "You have \(items.count) \(category?.info.name.lowercased() ?? "items") recorded.", records: items.prefix(30).map(RecordRef.asset), found: !items.isEmpty)
-        }
-        if q.contains("worth") || q.contains("value") {
-            let total = activeAssets.map(\.recordedValueCents).reduce(0, +)
-            let missing = activeAssets.filter { $0.replacementValueCents == nil && $0.purchasePriceCents == nil }.count
-            var text = "Your recorded items total \(Money.format(cents: total, currencyCode: currencyCode)), using replacement value where available and purchase price otherwise."
-            if missing > 0 { text += " \(missing) item\(missing == 1 ? " has" : "s have") no value recorded." }
-            return AssistantAnswer(question: question, text: text, records: activeAssets.sorted { $0.recordedValueCents > $1.recordedValueCents }.prefix(10).map(RecordRef.asset), found: !activeAssets.isEmpty)
         }
 
         // Fallback: keyword search
@@ -182,6 +197,15 @@ struct QueryEngine {
     }
 
     // MARK: Helpers
+
+    private func valueAnswer(_ question: String, _ activeAssets: [Asset]) -> AssistantAnswer {
+        let total = activeAssets.map { $0.recordedValueCents * max(1, $0.quantity) }.reduce(0, +)
+        let missing = activeAssets.filter { $0.replacementValueCents == nil && $0.purchasePriceCents == nil }.count
+        var text = "Your recorded items total \(Money.format(cents: total, currencyCode: currencyCode)), using replacement value where available and purchase price otherwise."
+        if missing > 0 { text += " \(missing) item\(missing == 1 ? " has" : "s have") no value recorded." }
+        let top = activeAssets.sorted { $0.recordedValueCents > $1.recordedValueCents }.prefix(10)
+        return AssistantAnswer(question: question, text: text, records: top.map(RecordRef.asset), found: !activeAssets.isEmpty)
+    }
 
     private func notFound(_ question: String, _ text: String) -> AssistantAnswer {
         AssistantAnswer(question: question, text: text, records: [], found: false)
@@ -211,11 +235,15 @@ struct QueryEngine {
         return scored.max { a, b in a.1 == b.1 ? a.0.createdAt > b.0.createdAt : a.1 < b.1 }?.0
     }
 
+    /// Whole-word room match ("den" must not match "garden"); the longest matching name wins.
     private func bestRoom(for q: String, in rooms: [Room]) -> Room? {
-        rooms.first { room in
-            let name = SearchService.normalize(room.name)
-            return !name.isEmpty && q.contains(name)
-        }
+        let padded = " " + SearchService.tokens(q).joined(separator: " ") + " "
+        return rooms
+            .filter { room in
+                let name = SearchService.tokens(room.name).joined(separator: " ")
+                return !name.isEmpty && padded.contains(" \(name) ")
+            }
+            .max { $0.name.count < $1.name.count }
     }
 
     private func documentKind(in q: String) -> DocumentKind? {
@@ -227,12 +255,13 @@ struct QueryEngine {
         return nil
     }
 
-    private func assetCategory(in q: String) -> AssetCategory? {
+    /// Matches category words at the start of whole words ("art" matches "artwork", not "smart").
+    private func assetCategory(in words: Set<String>) -> AssetCategory? {
         let map: [(String, AssetCategory)] = [("appliance", .appliance), ("electronic", .electronics), ("furniture", .furniture),
                                               ("hvac", .hvac), ("heating", .hvac), ("cooling", .hvac), ("plumbing", .plumbing),
                                               ("tool", .tools), ("outdoor", .outdoor), ("garden", .outdoor), ("jewel", .jewelry),
-                                              ("art", .art), ("vehicle", .vehicle), ("kitchenware", .kitchen)]
-        return map.first { q.contains($0.0) }?.1
+                                              ("art", .art), ("painting", .art), ("vehicle", .vehicle), ("kitchenware", .kitchen)]
+        return map.first { entry in words.contains { $0.hasPrefix(entry.0) } }?.1
     }
 
     struct Period { let range: Range<Date>; let label: String }

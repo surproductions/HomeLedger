@@ -194,6 +194,23 @@ final class AssetAndHomeTests: HomeLedgerTestCase {
         XCTAssertEqual(files.allFileNames().count, 0, "sample files are cleaned up")
     }
 
+    func testRemovingSampleDataKeepsSampleHomeThatHoldsUserItems() throws {
+        let sampleHome = SampleDataService(context: context, files: files).seed()
+        let kitchen = try XCTUnwrap(sampleHome.sortedRooms.first { $0.name == "Kitchen" })
+        makeAsset("My stand mixer", in: sampleHome, room: kitchen, category: .kitchen)
+        try context.save()
+
+        service.removeSampleData()
+        try context.save()
+
+        XCTAssertEqual(fetch(Asset.self).map(\.name), ["My stand mixer"])
+        let home = try XCTUnwrap(fetch(Home.self).first)
+        XCTAssertFalse(home.isSample, "the home is kept as a regular home")
+        XCTAssertEqual(home.addressLine, "")
+        XCTAssertEqual(home.sortedRooms.map(\.name), ["Kitchen"], "only rooms holding user items are kept")
+        XCTAssertFalse(service.hasSampleData)
+    }
+
     func testDeleteAllData() throws {
         SampleDataService(context: context, files: files).seed()
         try service.deleteAllData()

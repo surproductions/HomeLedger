@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 /// Editable copy of an asset so Cancel never leaves half-applied changes.
-struct AssetDraft {
+struct AssetDraft: Equatable {
     var name = ""
     var category = AssetCategory.other.rawValue
     var homeID: UUID?
@@ -89,6 +89,7 @@ struct AssetEditorView: View {
     @State private var newCategoryName = ""
     @State private var errorMessage: String?
     @State private var loaded = false
+    @State private var originalDraft = AssetDraft()
     @State private var confirmDiscard = false
 
     private var isNew: Bool { asset == nil }
@@ -134,7 +135,7 @@ struct AssetEditorView: View {
             .interactiveDismissDisabled(!newPhotoFiles.isEmpty || hasEdits)
     }
 
-    private var hasEdits: Bool { loaded && (isNew ? !draft.name.isEmpty : false) }
+    private var hasEdits: Bool { loaded && (draft != originalDraft || !removedPhotos.isEmpty) }
 
     // MARK: Sections
 
@@ -340,6 +341,7 @@ struct AssetEditorView: View {
                 draft.homeID = room.home?.id ?? home?.id
             }
         }
+        originalDraft = draft
         loaded = true
     }
 
@@ -394,16 +396,25 @@ struct AssetEditorView: View {
             context.insert(target)
         }
         draft.apply(to: target, homes: homes)
-        for photo in (asset?.photos ?? []) where removedPhotos.contains(photo.id) { svc.deletePhoto(photo) }
+        // Photo files are only removed after the save succeeds, so a failed save loses nothing.
+        let removed = (asset?.photos ?? []).filter { removedPhotos.contains($0.id) }
+        let removedFiles = removed.map(\.fileName)
+        for photo in removed { context.delete(photo) }
         for name in newPhotoFiles { svc.addPhoto(fileName: name, to: target) }
-        newPhotoFiles = []
         do {
             try context.save()
-            app.syncReminders(context)
+            removedFiles.forEach { FileStore.shared.delete($0) }
+            newPhotoFiles = []
+            if target.warrantyRemindersEnabled && target.warrantyExpiration != nil {
+                app.requestPermissionAndSyncReminders(context)
+            } else {
+                app.syncReminders(context)
+            }
             app.showToast(isNew ? "Item added" : "Changes saved")
             dismiss()
             if isNew { app.navigate(.asset(target)) }
         } catch {
+            context.rollback()
             errorMessage = "Your changes couldn't be saved: \(error.localizedDescription)"
         }
     }

@@ -60,6 +60,12 @@ final class DocumentTests: HomeLedgerTestCase {
         XCTAssertTrue(parser.parse("").isEmpty)
     }
 
+    func testLabelsWithoutIdentifiersAreNotMistakenForValues() {
+        let r = parser.parse("Serial number: see label on back\nModel number: see manual")
+        XCTAssertNil(r.serialNumber)
+        XCTAssertNil(r.modelNumber)
+    }
+
     func testFallbackTotalIsMarkedAsGuess() {
         let r = parser.parse("Coffee 3.50\nMuffin 4.25")
         XCTAssertEqual(r.totalCents?.value, 425)

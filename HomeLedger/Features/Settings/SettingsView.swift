@@ -93,7 +93,6 @@ struct SettingsView: View {
                         Button("Remove sample data") { confirmRemoveSample = true }
                             .accessibilityIdentifier("settings.removeSample")
                     }
-                    Button("Show welcome screens again") { onboardingComplete = false; dismiss() }
                     Button("Delete all data…", role: .destructive) { showDeleteAllField = true }
                         .accessibilityIdentifier("settings.deleteAll")
                 } header: { Text("Data control") }
@@ -305,6 +304,7 @@ struct BackupView: View {
 
     private func restore(_ mode: RestoreMode) {
         guard let archive = pending?.archive else { return }
+        defer { pending = nil; confirmReplace = false }
         do {
             let report = try BackupService(context: context).restore(archive, mode: mode)
             app.selectedHomeID = nil
@@ -312,10 +312,8 @@ struct BackupView: View {
             resultMessage = "Restored: \(report.inserted) added, \(report.updated) updated, \(report.skipped) unchanged, \(report.filesRestored) files." + (report.safetyBackupURL != nil ? " A safety backup was saved first." : "")
             UserDefaults.standard.set(true, forKey: Preferences.onboardingCompleteKey)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "The restore didn't complete and your current data was left unchanged. (\(error.localizedDescription))"
         }
-        pending = nil
-        confirmReplace = false
     }
 }
 

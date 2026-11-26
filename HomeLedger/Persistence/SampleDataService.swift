@@ -11,13 +11,15 @@ struct SampleDataService {
     var now: Date = .now
     var calendar: Calendar = .current
 
+    static let sampleAddressNote = "Sample data — remove anytime in Settings"
+
     private func days(_ n: Int) -> Date { calendar.date(byAdding: .day, value: n, to: now) ?? now }
     private func months(_ n: Int) -> Date { calendar.date(byAdding: .month, value: n, to: now) ?? now }
 
     @discardableResult
     func seed() -> Home {
         let home = Home(name: "Maple Street House", type: .house, sortIndex: 0, isSample: true)
-        home.addressLine = "Sample data — remove anytime in Settings"
+        home.addressLine = Self.sampleAddressNote
         context.insert(home)
 
         let roomSpecs: [(String, String)] = [("Kitchen", "refrigerator"), ("Living Room", "sofa"), ("Laundry", "washer"),

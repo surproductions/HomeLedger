@@ -43,6 +43,32 @@ final class MaintenanceTests: HomeLedgerTestCase {
         XCTAssertEqual(calendar.dateComponents([.month, .day], from: leap!), DateComponents(month: 2, day: 28))
     }
 
+    func testMonthEndScheduleDoesNotDriftAcrossCompletions() throws {
+        let task = MaintenanceTask(title: "Pay HOA", dueDate: date(2024, 1, 31), recurrence: .every(1, .month))
+        context.insert(task)
+        service.complete(task, on: date(2024, 1, 31), calculator: calc)
+        XCTAssertEqual(calendar.dateComponents([.month, .day], from: task.dueDate), DateComponents(month: 2, day: 29))
+        service.complete(task, on: date(2024, 2, 29), calculator: calc)
+        XCTAssertEqual(calendar.dateComponents([.month, .day], from: task.dueDate), DateComponents(month: 3, day: 31), "stays on the month end")
+        service.complete(task, on: date(2024, 3, 31), calculator: calc)
+        XCTAssertEqual(calendar.dateComponents([.month, .day], from: task.dueDate), DateComponents(month: 4, day: 30))
+    }
+
+    func testSnoozeKeepsScheduleRhythm() {
+        let task = MaintenanceTask(title: "Rent check", dueDate: date(2024, 1, 31), recurrence: .every(1, .month))
+        context.insert(task)
+        service.snooze(task, days: 3, now: date(2024, 1, 31), calendar: calendar)
+        service.complete(task, on: date(2024, 2, 3), calculator: calc)
+        XCTAssertEqual(calendar.dateComponents([.month, .day], from: task.dueDate), DateComponents(month: 2, day: 29))
+    }
+
+    func testSkippingEarlyAdvancesFromTheDueDate() {
+        let task = MaintenanceTask(title: "Filter", dueDate: date(2025, 3, 10), recurrence: .every(1, .month, basis: .completion))
+        context.insert(task)
+        service.skip(task, on: date(2025, 2, 20), calculator: calc)
+        XCTAssertEqual(calendar.dateComponents([.month, .day], from: task.dueDate), DateComponents(month: 4, day: 10), "not pulled earlier than one interval after the skipped date")
+    }
+
     func testOneTimeTaskHasNoNextDate() {
         XCTAssertNil(calc.nextDueDate(currentDue: date(2025, 1, 1), completedOn: date(2025, 1, 1), recurrence: .none))
     }

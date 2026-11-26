@@ -72,11 +72,12 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
                                                    recognizesMultipleItems: false, isHighFrameRateTrackingEnabled: false,
                                                    isHighlightingEnabled: true)
         controller.delegate = context.coordinator
-        try? controller.startScanning()
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: DataScannerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: DataScannerViewController, context: Context) {
+        if !uiViewController.isScanning { try? uiViewController.startScanning() }
+    }
     static func dismantleUIViewController(_ uiViewController: DataScannerViewController, coordinator: Coordinator) { uiViewController.stopScanning() }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 

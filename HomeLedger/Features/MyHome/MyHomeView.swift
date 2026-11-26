@@ -47,9 +47,9 @@ struct MyHomeView: View {
                     Button { addItem() } label: { Label("Add item", systemImage: "plus") }
                     Button { roomEditor = .new } label: { Label("Add room", systemImage: "square.split.bottomrightquarter") }
                     Divider()
-                    NavigationLink(value: AppRoute.homes) { Label("Manage homes & rooms", systemImage: "house.and.flag") }
+                    Button { app.navigate(.homes, in: .myHome) } label: { Label("Manage homes & rooms", systemImage: "house.and.flag") }
                     Button { app.present(.report) } label: { Label("Inventory report", systemImage: "doc.richtext") }
-                    NavigationLink(value: AppRoute.assets(AssetListFilter(title: "Archived", showArchived: true))) { Label("Archived items", systemImage: "archivebox") }
+                    Button { app.navigate(.assets(AssetListFilter(title: "Archived", showArchived: true)), in: .myHome) } label: { Label("Archived items", systemImage: "archivebox") }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }

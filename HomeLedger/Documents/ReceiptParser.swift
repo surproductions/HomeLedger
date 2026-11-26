@@ -62,10 +62,10 @@ struct ReceiptParser {
         var result = ExtractionResult()
         guard !lines.isEmpty else { return result }
 
-        result.serialNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:serial\s*(?:no\.?|number|#)?|s/n|sn\b)\s*[:#.]?\s*([A-Z0-9][A-Z0-9\-]{3,})"#)
-            .map { ExtractedField(value: $0.value.uppercased(), confidence: .detected, sourceLine: $0.line) }
-        result.modelNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:model\b\s*(?:no\.?|number|#)?|mod\.|m/n)\s*[:#.]?\s*([A-Z0-9][A-Z0-9\-./]{2,})"#)
-            .flatMap { ["NUMBER", "NO", "NAME"].contains($0.value.uppercased()) ? nil : ExtractedField(value: $0.value.uppercased(), confidence: .detected, sourceLine: $0.line) }
+        result.serialNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:serial\s*(?:no\.?|number|#)?|s/n|sn\b)\s*[:#.]?\s*((?=[A-Z0-9\-]*\d)[A-Z0-9][A-Z0-9\-]{3,})"#)
+            .map { m -> ExtractedField<String> in ExtractedField(value: m.value.uppercased(), confidence: .detected, sourceLine: m.line) }
+        result.modelNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:model\b\s*(?:no\.?|number|#)?|mod\.|m/n)\s*[:#.]?\s*((?=[A-Z0-9\-./]*\d)[A-Z0-9][A-Z0-9\-./]{2,})"#)
+            .map { m -> ExtractedField<String> in ExtractedField(value: m.value.uppercased(), confidence: .detected, sourceLine: m.line) }
 
         result.warrantyExpiration = warrantyExpiration(in: lines)
         result.warrantyMonths = warrantyPeriod(in: lines)

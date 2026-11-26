@@ -226,7 +226,7 @@ struct CompleteTaskSheet: View {
                     if cost != nil { Toggle("Record as an expense", isOn: $logExpense) }
                     TextField("Note (optional)", text: $note, axis: .vertical).lineLimit(1...4)
                 } footer: {
-                    if let next = RecurrenceCalculator().nextDueDate(currentDue: task.dueDate, completedOn: date, recurrence: task.recurrence) {
+                    if let next = RecurrenceCalculator().nextDueDate(currentDue: task.dueDate, completedOn: date, recurrence: task.recurrence, anchor: task.recurrenceAnchor) {
                         Text("Next due \(next.formatted(date: .long, time: .omitted)) (\(task.recurrence.summary.lowercased()), \(task.recurrence.basis == .completion ? "counted from completion" : "fixed schedule")).")
                     } else {
                         Text("This one-time task will move to your history.")

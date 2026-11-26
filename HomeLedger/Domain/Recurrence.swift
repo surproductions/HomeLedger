@@ -86,19 +86,25 @@ struct RecurrenceCalculator {
     /// - `.schedule` basis: the first scheduled occurrence strictly after the current due date
     ///   that is also after the completion day, so completing late never leaves the task
     ///   immediately overdue again, and completing early simply advances one step.
-    func nextDueDate(currentDue: Date, completedOn completionDate: Date, recurrence: Recurrence) -> Date? {
+    ///
+    /// `anchor` is the first occurrence of the schedule; stepping from it (instead of from the current
+    /// due date) keeps month-end schedules from drifting. When nil, the current due date is the anchor.
+    func nextDueDate(currentDue: Date, completedOn completionDate: Date, recurrence: Recurrence, anchor: Date? = nil) -> Date? {
         guard recurrence.isRepeating else { return nil }
         switch recurrence.basis {
         case .completion:
             let start = calendar.startOfDay(for: completionDate)
             return date(byAdding: 1, of: recurrence, to: start)
         case .schedule:
+            let base = anchor ?? currentDue
             let completionDay = calendar.startOfDay(for: completionDate)
+            let dueDay = calendar.startOfDay(for: currentDue)
             var step = 1
-            while let candidate = date(byAdding: step, of: recurrence, to: currentDue) {
-                if calendar.startOfDay(for: candidate) > completionDay { return candidate }
+            while let candidate = date(byAdding: step, of: recurrence, to: base) {
+                let day = calendar.startOfDay(for: candidate)
+                if day > completionDay && day > dueDay { return candidate }
                 step += 1
-                if step > 10_000 { return candidate } // defensive guard against bad data
+                if step > 100_000 { return candidate } // defensive guard against bad data
             }
             return nil
         }

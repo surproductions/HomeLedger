@@ -132,6 +132,7 @@ struct DataService {
         copy.warrantyExpiration = asset.warrantyExpiration
         copy.warrantyIsEstimated = asset.warrantyIsEstimated
         copy.warrantyProvider = asset.warrantyProvider
+        copy.warrantyNotes = asset.warrantyNotes
         copy.warrantyReminderOffsets = asset.warrantyReminderOffsets
         copy.warrantyRemindersEnabled = asset.warrantyRemindersEnabled
         copy.conditionRaw = asset.conditionRaw
@@ -189,14 +190,20 @@ struct DataService {
         return log
     }
 
+    /// Skipping moves past the current occurrence as if it had happened on time, so a task skipped
+    /// early isn't pulled forward and one skipped late isn't left overdue.
     func skip(_ task: MaintenanceTask, on date: Date = .now, calculator: RecurrenceCalculator = RecurrenceCalculator()) {
         let log = MaintenanceLog(date: date, kind: .skipped, dueDateResolved: task.dueDate, task: task)
+        log.isSample = task.isSample
         context.insert(log)
-        advance(task, from: date, calculator: calculator)
+        advance(task, from: max(date, task.dueDate), calculator: calculator)
     }
 
     private func advance(_ task: MaintenanceTask, from date: Date, calculator: RecurrenceCalculator) {
-        if let next = calculator.nextDueDate(currentDue: task.dueDate, completedOn: date, recurrence: task.recurrence) {
+        let anchor = task.recurrenceAnchor ?? task.dueDate
+        if let next = calculator.nextDueDate(currentDue: task.dueDate, completedOn: date, recurrence: task.recurrence, anchor: anchor) {
+            // Completion-based schedules restart from each completion, so the new date becomes the anchor.
+            task.recurrenceAnchor = task.recurrence.basis == .schedule ? anchor : next
             task.dueDate = next
         } else {
             task.isArchived = true // one-time task is done; kept in history
@@ -204,7 +211,9 @@ struct DataService {
         task.updatedAt = .now
     }
 
+    /// Postpones only this occurrence; the schedule's rhythm (anchor) is preserved.
     func snooze(_ task: MaintenanceTask, days: Int, now: Date = .now, calendar: Calendar = .current) {
+        if task.recurrenceAnchor == nil { task.recurrenceAnchor = task.dueDate }
         let base = max(task.dueDate, calendar.startOfDay(for: now))
         task.dueDate = calendar.date(byAdding: .day, value: days, to: base) ?? task.dueDate
         task.updatedAt = .now
@@ -249,22 +258,43 @@ struct DataService {
 
     // MARK: Bulk data control
 
+    /// Removes demo records only. If the user added their own records to the sample home (or its
+    /// rooms), those containers are kept and become regular records so nothing of theirs is orphaned.
     func removeSampleData() {
         for doc in fetchAll(DocumentRecord.self) where doc.isSample { deleteDocument(doc) }
         for asset in fetchAll(Asset.self) where asset.isSample { deleteAsset(asset) }
         for e in fetchAll(Expense.self) where e.isSample { context.delete(e) }
-        for r in fetchAll(ServiceRecord.self) where r.isSample { context.delete(r) }
+        for r in fetchAll(ServiceRecord.self) where r.isSample { deleteServiceRecord(r, deleteLinkedExpense: false) }
         for t in fetchAll(MaintenanceTask.self) where t.isSample { context.delete(t) }
-        for h in fetchAll(Home.self) where h.isSample {
-            for r in h.rooms ?? [] { context.delete(r) }
-            context.delete(h)
+        for room in fetchAll(Room.self) where room.isSample {
+            let inUse = (room.assets ?? []).contains { !$0.isSample } || (room.tasks ?? []).contains { !$0.isSample }
+            if inUse { room.isSample = false } else { context.delete(room) }
         }
-        for r in fetchAll(Room.self) where r.isSample { context.delete(r) }
+        for home in fetchAll(Home.self) where home.isSample {
+            let inUse = (home.assets ?? []).contains { !$0.isSample } || (home.tasks ?? []).contains { !$0.isSample }
+                || (home.documents ?? []).contains { !$0.isSample } || (home.expenses ?? []).contains { !$0.isSample }
+                || (home.serviceRecords ?? []).contains { !$0.isSample }
+                || (home.rooms ?? []).contains { !$0.isSample }
+            if inUse {
+                home.isSample = false
+                if home.addressLine == SampleDataService.sampleAddressNote { home.addressLine = "" }
+            } else {
+                context.delete(home)
+            }
+        }
     }
 
     var hasSampleData: Bool { fetchAll(Home.self).contains { $0.isSample } || fetchAll(Asset.self).contains { $0.isSample } }
 
     func deleteAllData() throws {
+        deleteAllRecords()
+        try context.save()
+        files.deleteAll()
+    }
+
+    /// Marks every record for deletion without saving or touching files (used by restore so the
+    /// whole replace can be rolled back if anything fails).
+    func deleteAllRecords() {
         // Delete object-by-object so relationship rules are honoured (batch deletes can fail with relationships).
         fetchAll(Expense.self).forEach { context.delete($0) }
         fetchAll(MaintenanceLog.self).forEach { context.delete($0) }
@@ -276,11 +306,21 @@ struct DataService {
         fetchAll(Room.self).forEach { context.delete($0) }
         fetchAll(Home.self).forEach { context.delete($0) }
         fetchAll(CustomCategory.self).forEach { context.delete($0) }
-        try context.save()
-        files.deleteAll()
     }
 
-    /// All file names referenced by records (for orphan cleanup and backups).
+    /// Referenced file names, or nil if the store couldn't be read (callers must then not delete files).
+    func referencedFileNamesIfReadable() -> Set<String>? {
+        do {
+            var names = Set(try context.fetch(FetchDescriptor<AssetPhoto>()).map(\.fileName))
+            names.formUnion(try context.fetch(FetchDescriptor<DocumentRecord>()).map(\.fileName))
+            names.remove("")
+            return names
+        } catch {
+            return nil
+        }
+    }
+
+    /// All file names referenced by records (for backups).
     func referencedFileNames() -> Set<String> {
         var names = Set(fetchAll(AssetPhoto.self).map(\.fileName))
         names.formUnion(fetchAll(DocumentRecord.self).map(\.fileName))

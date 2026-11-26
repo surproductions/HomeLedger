@@ -49,6 +49,7 @@ struct BackupArchive: Codable {
         var id: UUID; var title: String; var details: String; var dueDate: Date; var recurrenceUnit: String; var recurrenceInterval: Int; var recurrenceBasis: String
         var priority: String; var estimatedCostCents: Int?; var remindersEnabled: Bool; var reminderDaysBefore: Int; var isArchived: Bool; var templateKey: String
         var createdAt: Date; var updatedAt: Date; var homeID: UUID?; var roomID: UUID?; var assetID: UUID?
+        var recurrenceAnchor: Date?
     }
     struct LogDTO: Codable { var id: UUID; var date: Date; var kind: String; var note: String; var costCents: Int?; var dueDateResolved: Date?; var taskID: UUID? }
     struct ExpenseDTO: Codable {
@@ -168,7 +169,7 @@ struct BackupService {
             BackupArchive.TaskDTO(id: $0.id, title: $0.title, details: $0.details, dueDate: $0.dueDate, recurrenceUnit: $0.recurrenceUnitRaw, recurrenceInterval: $0.recurrenceInterval,
                   recurrenceBasis: $0.recurrenceBasisRaw, priority: $0.priorityRaw, estimatedCostCents: $0.estimatedCostCents, remindersEnabled: $0.remindersEnabled,
                   reminderDaysBefore: $0.reminderDaysBefore, isArchived: $0.isArchived, templateKey: $0.templateKey, createdAt: $0.createdAt, updatedAt: $0.updatedAt,
-                  homeID: $0.home?.id, roomID: $0.room?.id, assetID: $0.asset?.id)
+                  homeID: $0.home?.id, roomID: $0.room?.id, assetID: $0.asset?.id, recurrenceAnchor: $0.recurrenceAnchor)
         }
         a.logs = svc.fetchAll(MaintenanceLog.self).map { BackupArchive.LogDTO(id: $0.id, date: $0.date, kind: $0.kindRaw, note: $0.note, costCents: $0.costCents, dueDateResolved: $0.dueDateResolved, taskID: $0.task?.id) }
         a.expenses = svc.fetchAll(Expense.self).map {
@@ -212,11 +213,15 @@ struct BackupService {
 
     // MARK: Restore
 
+    /// Restores an archive. The whole operation is a single save: if anything fails, the context is
+    /// rolled back and existing records are untouched. Replace additionally writes a safety backup
+    /// first and removes no longer referenced files only after the new data has been saved.
     func restore(_ archive: BackupArchive, mode: RestoreMode, safetyBackupDirectory: URL? = nil) throws -> RestoreReport {
         var report = RestoreReport()
         let svc = DataService(context: context, files: files)
+        let isReplace = mode == .replace
 
-        if mode == .replace {
+        if isReplace {
             let hasExisting = !svc.fetchAll(Home.self).isEmpty || !svc.fetchAll(Asset.self).isEmpty || !svc.fetchAll(DocumentRecord.self).isEmpty
             if hasExisting {
                 let dir = safetyBackupDirectory ?? Self.safetyBackupDirectory
@@ -225,17 +230,33 @@ struct BackupService {
                 try exportData().write(to: url, options: [.atomic, .completeFileProtection])
                 report.safetyBackupURL = url
             }
-            try svc.deleteAllData()
         }
 
-        // Files first: if writing fails we stop before touching records.
+        do {
+            if isReplace { svc.deleteAllRecords() }
+            try apply(archive, replacing: isReplace, report: &report, svc: svc)
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
+        if isReplace, let referenced = svc.referencedFileNamesIfReadable() {
+            files.removeOrphans(referenced: referenced)
+        }
+        return report
+    }
+
+    private func apply(_ archive: BackupArchive, replacing: Bool, report: inout RestoreReport, svc: DataService) throws {
+        // New files are written alongside existing ones; nothing is removed here.
         for blob in archive.files where !files.exists(blob.name) {
             try files.save(blob.data, fileExtension: (blob.name as NSString).pathExtension, preferredName: blob.name)
             report.filesRestored += 1
         }
 
         func existing<T: PersistentModel>(_ type: T.Type, id: (T) -> UUID) -> [UUID: T] {
-            Dictionary(svc.fetchAll(type).map { (id($0), $0) }, uniquingKeysWith: { a, _ in a })
+            // When replacing, every current record is already marked for deletion.
+            if replacing { return [:] }
+            return Dictionary(svc.fetchAll(type).map { (id($0), $0) }, uniquingKeysWith: { a, _ in a })
         }
         var homes = existing(Home.self) { $0.id }
         var rooms = existing(Room.self) { $0.id }
@@ -291,6 +312,7 @@ struct BackupService {
             t.title = d.title; t.details = d.details; t.dueDate = d.dueDate; t.recurrenceUnitRaw = d.recurrenceUnit; t.recurrenceInterval = d.recurrenceInterval
             t.recurrenceBasisRaw = d.recurrenceBasis; t.priorityRaw = d.priority; t.estimatedCostCents = d.estimatedCostCents; t.remindersEnabled = d.remindersEnabled
             t.reminderDaysBefore = d.reminderDaysBefore; t.isArchived = d.isArchived; t.templateKey = d.templateKey; t.createdAt = d.createdAt; t.updatedAt = d.updatedAt
+            t.recurrenceAnchor = d.recurrenceAnchor
             t.home = d.homeID.flatMap { homes[$0] }; t.room = d.roomID.flatMap { rooms[$0] }; t.asset = d.assetID.flatMap { assets[$0] }
         }
         for d in archive.logs where logs[d.id] == nil {
@@ -328,8 +350,6 @@ struct BackupService {
             context.insert(c)
             report.inserted += 1
         }
-        try context.save()
-        return report
     }
 
     static var safetyBackupDirectory: URL {

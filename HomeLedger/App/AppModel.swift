@@ -186,4 +186,15 @@ final class AppModel {
     func syncReminders(_ context: ModelContext) {
         Task { await NotificationService.shared.sync(context: context) }
     }
+
+    /// Asks for notification permission in context (the first time the user saves something with a
+    /// reminder), then schedules. iOS only shows the system prompt once; later calls just return.
+    func requestPermissionAndSyncReminders(_ context: ModelContext) {
+        Task {
+            if Preferences.notificationsEnabled && !launch.isUITesting {
+                _ = await NotificationService.shared.requestPermission()
+            }
+            await NotificationService.shared.sync(context: context)
+        }
+    }
 }

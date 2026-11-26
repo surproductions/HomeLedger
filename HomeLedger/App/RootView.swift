@@ -16,10 +16,10 @@ struct RootView: View {
             }
         }
         .task {
-            await app.store.refreshEntitlements()
-            await app.store.loadProducts()
             applyStartScreen()
             app.syncReminders(context)
+            await app.store.refreshEntitlements()
+            await app.store.loadProducts()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { app.syncReminders(context) }
@@ -152,7 +152,7 @@ struct ToastView: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Theme.ink.opacity(0.92), in: Capsule())
+                .background(Color(light: 0x1B1F33, dark: 0x2C3142).opacity(0.96), in: Capsule())
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .accessibilityAddTraits(.updatesFrequently)

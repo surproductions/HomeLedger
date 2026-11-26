@@ -330,7 +330,11 @@ struct DocumentImportFlow: View {
         var asset = linkAssetID.flatMap { id in assets.first { $0.id == id } }
 
         if createNewAsset {
-            guard svc.canAddAsset(entitlements: app.entitlement) else { app.present(.paywall(.unlimitedItems)); return }
+            guard svc.canAddAsset(entitlements: app.entitlement) else {
+                errorMessage = DataServiceError.assetLimitReached(limit: EntitlementState.freeAssetLimit).localizedDescription
+                    + " You can still save the document and link it to an existing item."
+                return
+            }
             let name = draft.productName.isEmpty ? draft.title : draft.productName
             let created = Asset(name: name, category: .other, home: home)
             context.insert(created)
@@ -373,10 +377,15 @@ struct DocumentImportFlow: View {
         do {
             try context.save()
             saved = true
-            app.syncReminders(context)
+            if asset?.warrantyExpiration != nil {
+                app.requestPermissionAndSyncReminders(context)
+            } else {
+                app.syncReminders(context)
+            }
             app.showToast("Document saved")
             dismiss()
         } catch {
+            context.rollback()
             errorMessage = "The document couldn't be saved: \(error.localizedDescription)"
         }
     }
