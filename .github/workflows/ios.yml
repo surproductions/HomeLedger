@@ -180,7 +180,9 @@ jobs:
         run: |
           TAG="v1.0.0-build.${{ github.run_number }}"
           (cd screenshots 2>/dev/null && zip -qr ../dist/HomeLedger-screenshots.zip .) || true
-          gh release create "$TAG" dist/*.ipa dist/*.xcarchive.zip dist/SHA256SUMS.txt dist/HomeLedger-screenshots.zip HomeLedger-xcodeproj.zip \
+          FILES=(dist/*.ipa dist/*.xcarchive.zip dist/SHA256SUMS.txt HomeLedger-xcodeproj.zip)
+          [ -f dist/HomeLedger-screenshots.zip ] && FILES+=(dist/HomeLedger-screenshots.zip)
+          gh release create "$TAG" "${FILES[@]}" \
             --target "$GITHUB_SHA" --prerelease \
             --title "HomeLedger 1.0.0 (build ${{ github.run_number }})" \
             --notes-file docs/RELEASE_NOTES.md

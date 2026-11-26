@@ -97,13 +97,13 @@ final class HomeLedgerUITests: XCTestCase {
         XCTAssertEqual(vendor.value as? String, "Homegoods Depot")
         XCTAssertTrue(element(containing: "Best guess").exists, "inferred fields are labelled")
         XCTAssertTrue(element(containing: "Detected").exists, "explicitly labelled fields are marked as detected")
+
+        // The user corrects a field before saving (done before scrolling, while the field is on screen).
+        clearAndType(vendor, "HomeGoods Depot")
+
         let serial = app.textFields["import.serial"]
         scrollTo(serial)
         XCTAssertEqual(serial.value as? String, "FD0112")
-
-        // User corrects a field before saving.
-        scrollTo(vendor)
-        clearAndType(vendor, "HomeGoods Depot")
 
         let create = app.switches["import.createAsset"]
         scrollTo(create)
@@ -193,8 +193,9 @@ final class HomeLedgerUITests: XCTestCase {
 
         let localBackup = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'backup.local.'")).firstMatch
         waitAndTap(localBackup)
-        waitAndTap(app.buttons["Replace all current data…"])
-        waitAndTap(app.alerts.buttons["Replace"])
+        // iOS 26 can expose the dialog's buttons twice (sheet + popover representation).
+        waitAndTap(app.buttons["Replace all current data…"].firstMatch)
+        waitAndTap(app.alerts.buttons["Replace"].firstMatch)
         XCTAssertTrue(element(containing: "Restored:").waitForExistence(timeout: 20))
         XCTAssertTrue(element(containing: "safety backup").exists, "a safety backup was written before replacing")
     }
