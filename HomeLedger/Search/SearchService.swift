@@ -115,7 +115,7 @@ struct SearchService {
             }
             .sorted { $0.1 > $1.1 }
             .prefix(limitPerGroup)
-            .map(\.0)
+            .map { $0.0 }
         }
 
         var groups: [SearchResultGroup] = []

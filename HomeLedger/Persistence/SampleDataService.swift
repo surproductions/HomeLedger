@@ -127,7 +127,7 @@ struct SampleDataService {
         service("Anode rod inspection", .inspection, asset: waterHeater, date: months(-2), vendor: "Self", cost: 0, details: "Rod about 40% depleted. Re-check next year.")
 
         // Maintenance tasks
-        func task(_ template: String, due: Date, asset: Asset? = nil, room: String? = nil, priority: TaskPriority = .normal, completedAgo: [Int] = []) {
+        func task(_ template: String, due: Date, asset: Asset? = nil, room: String? = nil, priority: MaintenancePriority = .normal, completedAgo: [Int] = []) {
             guard let t = MaintenanceTemplate.template(forKey: template) else { return }
             let task = MaintenanceTask(title: t.title, dueDate: due, recurrence: t.recurrence, priority: priority, home: home, isSample: true)
             task.details = t.details

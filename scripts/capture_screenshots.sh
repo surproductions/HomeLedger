@@ -4,7 +4,8 @@
 set -euo pipefail
 UDID="$1"; DD="$2"; OUT="$3"
 mkdir -p "$OUT"
-APP=$(find "$DD/Build/Products" -path "*iphonesimulator/HomeLedger.app" -maxdepth 3 | head -1)
+APP=$(find "$DD/Build/Products" -maxdepth 3 -path "*iphonesimulator/HomeLedger.app" 2>/dev/null | head -1)
+[ -x "$APP/HomeLedger" ] || { echo "No simulator build found; skipping screenshots"; exit 0; }
 BUNDLE=com.surproductions.homeledger
 xcrun simctl boot "$UDID" 2>/dev/null || true
 xcrun simctl bootstatus "$UDID" -b

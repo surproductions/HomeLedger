@@ -204,7 +204,7 @@ struct HomesManagerView: View {
                     Button { app.present(.editHome(home)) } label: {
                         RecordRow(symbol: home.homeType.symbol, tint: Theme.brand, title: home.name,
                                   subtitle: "\(home.homeType.label) · \(home.activeAssets.count) items",
-                                  pill: app.currentHome(in: homes)?.id == home.id ? ("Current", .brand) : nil)
+                                  pill: app.currentHome(in: homes)?.id == home.id ? ("Current", StatusTone.brand) : nil)
                     }
                     .buttonStyle(.plain)
                     ForEach(home.sortedRooms) { room in

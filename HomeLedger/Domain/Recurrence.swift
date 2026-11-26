@@ -40,7 +40,7 @@ enum RecurrenceBasis: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-struct Recurrence: Equatable, Codable {
+struct Recurrence: Hashable, Codable {
     var unit: RecurrenceUnit
     var interval: Int
     var basis: RecurrenceBasis

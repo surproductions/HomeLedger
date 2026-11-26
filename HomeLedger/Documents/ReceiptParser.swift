@@ -65,8 +65,7 @@ struct ReceiptParser {
         result.serialNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:serial\s*(?:no\.?|number|#)?|s/n|sn\b)\s*[:#.]?\s*([A-Z0-9][A-Z0-9\-]{3,})"#)
             .map { ExtractedField(value: $0.value.uppercased(), confidence: .detected, sourceLine: $0.line) }
         result.modelNumber = firstCapture(in: lines, pattern: #"(?i)\b(?:model\b\s*(?:no\.?|number|#)?|mod\.|m/n)\s*[:#.]?\s*([A-Z0-9][A-Z0-9\-./]{2,})"#)
-            .filter { !["NUMBER", "NO", "NAME"].contains($0.value.uppercased()) }
-            .map { ExtractedField(value: $0.value.uppercased(), confidence: .detected, sourceLine: $0.line) }
+            .flatMap { ["NUMBER", "NO", "NAME"].contains($0.value.uppercased()) ? nil : ExtractedField(value: $0.value.uppercased(), confidence: .detected, sourceLine: $0.line) }
 
         result.warrantyExpiration = warrantyExpiration(in: lines)
         result.warrantyMonths = warrantyPeriod(in: lines)
@@ -102,7 +101,7 @@ struct ReceiptParser {
         for m in RegexHelper.matches("(?i)\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(\(monthNames))\\.?,?\\s+(\\d{4})\\b", in: line) {
             if let month = monthNumber(m.groups[1]), let d = makeDate(year: Int(m.groups[2]), month: month, day: Int(m.groups[0])) { found.append((m.location, d)) }
         }
-        return found.sorted { $0.0 < $1.0 }.map(\.1)
+        return found.sorted { $0.0 < $1.0 }.map { $0.1 }
     }
 
     private func makeDate(year: Int?, month: Int?, day: Int?) -> Date? {

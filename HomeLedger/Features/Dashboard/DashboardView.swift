@@ -297,7 +297,7 @@ struct DashboardView: View {
                         NavigationLink(value: AppRoute.asset(asset)) {
                             RecordRow(symbol: "exclamationmark.shield", tint: Theme.warning, title: asset.name,
                                       subtitle: "Ends \(asset.warrantyExpiration?.formatted(date: .abbreviated, time: .omitted) ?? "")\(asset.warrantyIsEstimated ? " (est.)" : "")",
-                                      pill: ("\(asset.warrantyDaysRemaining ?? 0)d left", .warning))
+                                      pill: ("\(asset.warrantyDaysRemaining ?? 0)d left", StatusTone.warning))
                         }
                         .buttonStyle(.plain)
                     }

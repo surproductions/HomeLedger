@@ -142,10 +142,10 @@ struct BackupService {
     func makeArchive(includeFiles: Bool = true, now: Date = .now) -> BackupArchive {
         let svc = DataService(context: context, files: files)
         var a = BackupArchive(createdAt: now, appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
-        a.homes = svc.fetchAll(Home.self).map { .init(id: $0.id, name: $0.name, homeType: $0.homeTypeRaw, addressLine: $0.addressLine, notes: $0.notes, sortIndex: $0.sortIndex, createdAt: $0.createdAt, updatedAt: $0.updatedAt) }
-        a.rooms = svc.fetchAll(Room.self).map { .init(id: $0.id, name: $0.name, symbolName: $0.symbolName, sortIndex: $0.sortIndex, createdAt: $0.createdAt, homeID: $0.home?.id) }
+        a.homes = svc.fetchAll(Home.self).map { BackupArchive.HomeDTO(id: $0.id, name: $0.name, homeType: $0.homeTypeRaw, addressLine: $0.addressLine, notes: $0.notes, sortIndex: $0.sortIndex, createdAt: $0.createdAt, updatedAt: $0.updatedAt) }
+        a.rooms = svc.fetchAll(Room.self).map { BackupArchive.RoomDTO(id: $0.id, name: $0.name, symbolName: $0.symbolName, sortIndex: $0.sortIndex, createdAt: $0.createdAt, homeID: $0.home?.id) }
         a.assets = svc.fetchAll(Asset.self).map {
-            .init(id: $0.id, name: $0.name, category: $0.category, brand: $0.brand, modelNumber: $0.modelNumber, serialNumber: $0.serialNumber, barcode: $0.barcode,
+            BackupArchive.AssetDTO(id: $0.id, name: $0.name, category: $0.category, brand: $0.brand, modelNumber: $0.modelNumber, serialNumber: $0.serialNumber, barcode: $0.barcode,
                   purchaseDate: $0.purchaseDate, purchasePriceCents: $0.purchasePriceCents, retailer: $0.retailer,
                   warrantyStart: $0.warrantyStart, warrantyExpiration: $0.warrantyExpiration, warrantyIsEstimated: $0.warrantyIsEstimated,
                   warrantyProvider: $0.warrantyProvider, warrantyNotes: $0.warrantyNotes, warrantyRemindersEnabled: $0.warrantyRemindersEnabled,
@@ -153,29 +153,29 @@ struct BackupService {
                   replacementValueCents: $0.replacementValueCents, quantity: $0.quantity, isArchived: $0.isArchived,
                   createdAt: $0.createdAt, updatedAt: $0.updatedAt, homeID: $0.home?.id, roomID: $0.room?.id)
         }
-        a.photos = svc.fetchAll(AssetPhoto.self).map { .init(id: $0.id, fileName: $0.fileName, sortIndex: $0.sortIndex, createdAt: $0.createdAt, assetID: $0.asset?.id) }
+        a.photos = svc.fetchAll(AssetPhoto.self).map { BackupArchive.PhotoDTO(id: $0.id, fileName: $0.fileName, sortIndex: $0.sortIndex, createdAt: $0.createdAt, assetID: $0.asset?.id) }
         a.documents = svc.fetchAll(DocumentRecord.self).map {
-            .init(id: $0.id, title: $0.title, kind: $0.kindRaw, fileName: $0.fileName, originalFileName: $0.originalFileName, contentType: $0.contentTypeRaw,
+            BackupArchive.DocumentDTO(id: $0.id, title: $0.title, kind: $0.kindRaw, fileName: $0.fileName, originalFileName: $0.originalFileName, contentType: $0.contentTypeRaw,
                   fileSize: $0.fileSize, documentDate: $0.documentDate, vendor: $0.vendor, amountCents: $0.amountCents, notes: $0.notes,
                   recognizedText: $0.recognizedText, createdAt: $0.createdAt, updatedAt: $0.updatedAt, homeID: $0.home?.id, assetID: $0.asset?.id, serviceRecordID: $0.serviceRecord?.id)
         }
         a.services = svc.fetchAll(ServiceRecord.self).map {
-            .init(id: $0.id, title: $0.title, kind: $0.kindRaw, date: $0.date, details: $0.details, vendor: $0.vendor, costCents: $0.costCents,
+            BackupArchive.ServiceDTO(id: $0.id, title: $0.title, kind: $0.kindRaw, date: $0.date, details: $0.details, vendor: $0.vendor, costCents: $0.costCents,
                   followUpDate: $0.followUpDate, followUpNote: $0.followUpNote, createdAt: $0.createdAt, updatedAt: $0.updatedAt,
                   homeID: $0.home?.id, assetID: $0.asset?.id, taskID: $0.task?.id)
         }
         a.tasks = svc.fetchAll(MaintenanceTask.self).map {
-            .init(id: $0.id, title: $0.title, details: $0.details, dueDate: $0.dueDate, recurrenceUnit: $0.recurrenceUnitRaw, recurrenceInterval: $0.recurrenceInterval,
+            BackupArchive.TaskDTO(id: $0.id, title: $0.title, details: $0.details, dueDate: $0.dueDate, recurrenceUnit: $0.recurrenceUnitRaw, recurrenceInterval: $0.recurrenceInterval,
                   recurrenceBasis: $0.recurrenceBasisRaw, priority: $0.priorityRaw, estimatedCostCents: $0.estimatedCostCents, remindersEnabled: $0.remindersEnabled,
                   reminderDaysBefore: $0.reminderDaysBefore, isArchived: $0.isArchived, templateKey: $0.templateKey, createdAt: $0.createdAt, updatedAt: $0.updatedAt,
                   homeID: $0.home?.id, roomID: $0.room?.id, assetID: $0.asset?.id)
         }
-        a.logs = svc.fetchAll(MaintenanceLog.self).map { .init(id: $0.id, date: $0.date, kind: $0.kindRaw, note: $0.note, costCents: $0.costCents, dueDateResolved: $0.dueDateResolved, taskID: $0.task?.id) }
+        a.logs = svc.fetchAll(MaintenanceLog.self).map { BackupArchive.LogDTO(id: $0.id, date: $0.date, kind: $0.kindRaw, note: $0.note, costCents: $0.costCents, dueDateResolved: $0.dueDateResolved, taskID: $0.task?.id) }
         a.expenses = svc.fetchAll(Expense.self).map {
-            .init(id: $0.id, title: $0.title, date: $0.date, amountCents: $0.amountCents, category: $0.categoryRaw, vendor: $0.vendor, notes: $0.notes,
+            BackupArchive.ExpenseDTO(id: $0.id, title: $0.title, date: $0.date, amountCents: $0.amountCents, category: $0.categoryRaw, vendor: $0.vendor, notes: $0.notes,
                   createdAt: $0.createdAt, updatedAt: $0.updatedAt, homeID: $0.home?.id, assetID: $0.asset?.id, serviceRecordID: $0.serviceRecord?.id, receiptID: $0.receipt?.id)
         }
-        a.categories = svc.fetchAll(CustomCategory.self).map { .init(id: $0.id, name: $0.name, symbolName: $0.symbolName, createdAt: $0.createdAt) }
+        a.categories = svc.fetchAll(CustomCategory.self).map { BackupArchive.CategoryDTO(id: $0.id, name: $0.name, symbolName: $0.symbolName, createdAt: $0.createdAt) }
         if includeFiles {
             a.files = svc.referencedFileNames().sorted().compactMap { name in files.data(for: name).map { BackupArchive.FileBlob(name: name, data: $0) } }
         }

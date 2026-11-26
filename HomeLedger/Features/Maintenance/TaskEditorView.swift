@@ -17,7 +17,7 @@ struct TaskEditorView: View {
     @State private var unit: RecurrenceUnit = .none
     @State private var interval = 1
     @State private var basis: RecurrenceBasis = .schedule
-    @State private var priority: TaskPriority = .normal
+    @State private var priority: MaintenancePriority = .normal
     @State private var estimatedCost: Int?
     @State private var remindersEnabled = true
     @State private var reminderDaysBefore = 1
@@ -52,7 +52,7 @@ struct TaskEditorView: View {
                 Section("Task") {
                     TextField("Title (required)", text: $title).accessibilityIdentifier("task.title")
                     TextField("Details", text: $details, axis: .vertical).lineLimit(2...6)
-                    Picker("Priority", selection: $priority) { ForEach(TaskPriority.allCases) { Text($0.label).tag($0) } }
+                    Picker("Priority", selection: $priority) { ForEach(MaintenancePriority.allCases) { Text($0.label).tag($0) } }
                 }
                 Section {
                     DatePicker(task == nil ? "First due" : "Next due", selection: $dueDate, displayedComponents: .date)

@@ -277,7 +277,7 @@ final class MaintenanceTask {
     var recurrenceUnitRaw: String = RecurrenceUnit.none.rawValue
     var recurrenceInterval: Int = 1
     var recurrenceBasisRaw: String = RecurrenceBasis.schedule.rawValue
-    var priorityRaw: String = TaskPriority.normal.rawValue
+    var priorityRaw: String = MaintenancePriority.normal.rawValue
     var estimatedCostCents: Int?
     var remindersEnabled: Bool = true
     var reminderDaysBefore: Int = 1
@@ -293,7 +293,7 @@ final class MaintenanceTask {
     @Relationship(deleteRule: .cascade, inverse: \MaintenanceLog.task) var logs: [MaintenanceLog]? = []
     @Relationship(deleteRule: .nullify, inverse: \ServiceRecord.task) var serviceRecords: [ServiceRecord]? = []
 
-    init(title: String, dueDate: Date, recurrence: Recurrence = .none, priority: TaskPriority = .normal, home: Home? = nil, isSample: Bool = false) {
+    init(title: String, dueDate: Date, recurrence: Recurrence = .none, priority: MaintenancePriority = .normal, home: Home? = nil, isSample: Bool = false) {
         self.id = UUID()
         self.title = title
         self.dueDate = dueDate
@@ -320,8 +320,8 @@ final class MaintenanceTask {
         }
     }
 
-    var priority: TaskPriority {
-        get { TaskPriority(rawValue: priorityRaw) ?? .normal }
+    var priority: MaintenancePriority {
+        get { MaintenancePriority(rawValue: priorityRaw) ?? .normal }
         set { priorityRaw = newValue.rawValue }
     }
 

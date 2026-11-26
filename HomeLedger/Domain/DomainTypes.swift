@@ -145,12 +145,12 @@ enum ServiceKind: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum TaskPriority: String, CaseIterable, Identifiable, Codable, Comparable {
+enum MaintenancePriority: String, CaseIterable, Identifiable, Codable, Comparable {
     case low, normal, high
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
     private var rank: Int { switch self { case .low: 0; case .normal: 1; case .high: 2 } }
-    static func < (lhs: TaskPriority, rhs: TaskPriority) -> Bool { lhs.rank < rhs.rank }
+    static func < (lhs: MaintenancePriority, rhs: MaintenancePriority) -> Bool { lhs.rank < rhs.rank }
 }
 
 enum MaintenanceLogKind: String, Codable {
@@ -214,7 +214,7 @@ enum Money {
             }
         } else if let comma = lastComma {
             let decimals = cleaned.distance(from: comma, to: cleaned.endIndex) - 1
-            if decimals == 2 && cleaned.filter({ $0 == "," }).count == 1 {
+            if (1...2).contains(decimals) && cleaned.filter({ $0 == "," }).count == 1 {
                 cleaned = cleaned.replacingOccurrences(of: ",", with: ".")
             } else {
                 cleaned = cleaned.replacingOccurrences(of: ",", with: "")
